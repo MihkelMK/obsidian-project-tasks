@@ -16,13 +16,13 @@ This plugin requires the [Tasks](https://github.com/obsidian-tasks-group/obsidia
 
 ## Key Highlights
 
-- Automatically create and manage Task ID's 
+- Automatically create and manage Task ID's
 - Create and manage Task dependencies
 - Associate project specific tags
 - All existing task functionality like due dates, recurrence
 - Tasks continue to work on vaults that do not have the plugin installed
 - Use dataviews to show project tasks that are due now
-- (Future) Supports parallel task execution
+- Supports parallel and sequential task execution at both root and nested levels
 - (Future) Supports optional and conditional tasks
 
 ## How to set up
@@ -91,9 +91,19 @@ is not blocked
 '''
 ```
 
-### Nested Tags
+### Task Behavior
 
-TODO: Explain nested tags
+You can control how tasks depend on each other at different hierarchy levels:
+
+**Root Task Behavior**: Controls whether top-level (non-nested) tasks execute in parallel or sequentially.
+- **Sequential Execution** (default): Each root task waits for the previous root task to complete
+- **Parallel Execution**: Root tasks have no dependencies on each other
+
+**Nested Task Behavior**: Controls whether child tasks execute in parallel or sequentially.
+- **Parallel Execution** (default): Sibling tasks at the same nesting level all depend on their parent task and can execute in parallel
+- **Sequential Execution**: Each child task depends on the previous sibling task
+
+These settings can be configured in the plugin settings or overridden per-file using front matter.
 
 ### Clear Task ID's
 
@@ -194,7 +204,8 @@ It is important to use the internal name **and type** of the settings. These are
 | Remove Vowels           |removeVowels| **Boolean**|  Whether lower case vowels are removed from the ID prefix                                  |
 | First Letters of Words  |firstLettersOfWords| **Boolean**| Whether only the first letters of words in the prefix are used                             |
 | Automatic Tag Names     |automaticTagNames| **List of Strings**| The set of tag names to add to project tasks                                               |
-| Clear All Tags          |clearAllTags| **Boolean**| Whether to clear all tags, or just the "autoamtic" tags, from tasks when clearing the ID's |
-| Nested Tag Behavior     |nestedTaskBehavior| **Number**| 1=Nested tasks run in parallel, 2=Nested tasks run sequentially                            |
+| Clear All Tags          |clearAllTags| **Boolean**| Whether to clear all tags, or just the "automatic" tags, from tasks when clearing the ID's |
+| Root Task Behavior      |rootTaskBehavior| **Number**| 1=Root tasks run in parallel, 2=Root tasks run sequentially                                |
+| Nested Task Behavior    |nestedTaskBehavior| **Number**| 1=Nested tasks run in parallel, 2=Nested tasks run sequentially                            |
 
 
