@@ -20,7 +20,7 @@ export default class ProjectTasks extends Plugin {
             name: "Set project ids on selection",
             editorCallback: (editor, view) => {
                 let sel = editor.getSelection();
-                let lines = Helper.addTaskIDs(sel, Helper.getPrefix(editor, this.getFilename(editor, view), this.getFileSettings(editor)), this.getFileSettings(editor).automaticTagNames, this.getFileSettings(editor).nestedTaskBehavior == Nestingbehavior.ParallelExecution, this.getFileSettings(editor).idPrefixMethod == PrefixMethod.UsePrefix, this.getFileSettings(editor).randomIDLength, this.getFileSettings(editor).sequentialStartNumber, this.getFileSettings(editor).debug, this.tabSize);
+                let lines = Helper.addTaskIDs(sel, Helper.getPrefix(editor, this.getFilename(editor, view), this.getFileSettings(editor)), this.getFileSettings(editor).automaticTagNames, this.getFileSettings(editor).rootTaskBehavior == Nestingbehavior.ParallelExecution, this.getFileSettings(editor).nestedTaskBehavior == Nestingbehavior.ParallelExecution, this.getFileSettings(editor).idPrefixMethod == PrefixMethod.UsePrefix, this.getFileSettings(editor).randomIDLength, this.getFileSettings(editor).sequentialStartNumber, this.getFileSettings(editor).debug, this.tabSize);
                 editor.replaceSelection(
                     `${lines}`
                 );
@@ -250,7 +250,20 @@ class ProjectTasksSettingsTab extends PluginSettingTab {
             .setHeading();
 
         new Setting(containerEl)
-            .setName('Nested tags behavior')
+            .setName('Root task behavior')
+            .setDesc('Determines whether root-level (non-nested) tasks will execute in parallel or sequential')
+            .addDropdown(dropDown => {
+                dropDown.addOption('1', 'Parallel Execution');
+                dropDown.addOption('2', 'Sequential Execution')
+                    .setValue(this.plugin.settings.rootTaskBehavior.toString())
+                    .onChange(async (value) => {
+                        this.plugin.settings.rootTaskBehavior = parseInt(value) as Nestingbehavior;
+                        await this.plugin.saveSettings();
+                    })
+            });
+
+        new Setting(containerEl)
+            .setName('Nested task behavior')
             .setDesc('Determines whether nested tags will create parallel execution tags or sequential')
             .addDropdown(dropDown => {
                 dropDown.addOption('1', 'Parallel Execution');

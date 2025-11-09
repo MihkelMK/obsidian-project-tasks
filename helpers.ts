@@ -24,6 +24,7 @@ export interface ProjectTasksSettings {
     firstLettersOfWords: boolean;
     automaticTagNames: string[];
     clearAllTags: boolean;
+    rootTaskBehavior: Nestingbehavior;
     nestedTaskBehavior: Nestingbehavior;
     overrideSettings: boolean;
     debug: boolean;
@@ -38,6 +39,7 @@ export const DEFAULT_SETTINGS: ProjectTasksSettings = {
     firstLettersOfWords: false,
     automaticTagNames: ["Project"],
     clearAllTags: false,
+    rootTaskBehavior: Nestingbehavior.SequentialExecution,
     nestedTaskBehavior: Nestingbehavior.ParallelExecution,
     overrideSettings: true,
     debug: false
@@ -223,7 +225,7 @@ export default class Helper {
         }
     }
 
-    static addTaskIDs(sel: string, prefix: string, automatic_tags: string[], parallel: boolean, use_prefix: boolean,
+    static addTaskIDs(sel: string, prefix: string, automatic_tags: string[], root_parallel: boolean, nested_parallel: boolean, use_prefix: boolean,
                       random_id_length: number, sequential_start: number, debug: boolean = false, tabSize: number = 4) {
         // ToDo refactor addTaskIDs to use the settings
         // Clear all the existing block and project ID's
@@ -236,7 +238,7 @@ export default class Helper {
         let idx = 0;
         let nesting_ids = ["0:ERROR!"];
         let current_nesting = 0;
-        let is_parallel = false;
+        let is_parallel = root_parallel;
         let this_id;
 
         // Go through all the lines and add appropriate ID and block tags
@@ -248,23 +250,44 @@ export default class Helper {
             // Is this a task line at all?
             if (match.is_task) {
                 // Watch out for changes in nesting
-                if (parallel) {
-                    let nesting_depth = match.nesting;
-                    if (nesting_depth > current_nesting) {
-                        // Add a new level of nesting
-                        current_nesting += 1;
-                        is_parallel = true;
+                let nesting_depth = match.nesting;
+                if (nesting_depth > current_nesting) {
+                    // Add a new level of nesting
+                    current_nesting += 1;
+                    is_parallel = nested_parallel;
+                    // Initialize new level based on mode:
+                    // - In parallel mode: empty string, siblings will be accumulated
+                    // - In sequential mode: use previous task as blocker for first child
+                    if (nested_parallel) {
                         nesting_ids.push(``);
-                    } else if (nesting_depth < current_nesting) {
-                        // Remove levels of nesting
-                        while (current_nesting > nesting_depth) {
-                            current_nesting -= 1;
-                            let nested = nesting_ids.pop();
-                            if (nested) {
+                    } else {
+                        nesting_ids.push(nesting_ids[nesting_ids.length - 1]);
+                    }
+                } else if (nesting_depth < current_nesting) {
+                    // Remove levels of nesting
+                    while (current_nesting > nesting_depth) {
+                        current_nesting -= 1;
+                        let nested = nesting_ids.pop();
+                        // Determine the new mode after decrement
+                        let new_is_parallel = (current_nesting > 0) ? nested_parallel : root_parallel;
+
+                        // Merge nested level into parent level
+                        if (current_nesting === 0 && root_parallel) {
+                            // Exiting back to root parallel mode - clear blockers
+                            nesting_ids[0] = "";
+                        } else if (nested && is_parallel) {
+                            // Was in parallel mode: accumulate nested IDs at parent level
+                            let parent_value = nesting_ids[nesting_ids.length - 1];
+                            if (parent_value && parent_value !== "0:ERROR!") {
                                 nesting_ids[nesting_ids.length - 1] += `,${nested}`;
+                            } else {
+                                nesting_ids[nesting_ids.length - 1] = nested;
                             }
-                            is_parallel = current_nesting > 0;
+                        } else if (nested && !is_parallel) {
+                            // Was in sequential mode: last nested task is the blocker
+                            nesting_ids[nesting_ids.length - 1] = nested;
                         }
+                        is_parallel = new_is_parallel;
                     }
                 }
                 let this_line;
@@ -281,11 +304,14 @@ export default class Helper {
                 this_line = `${match.task_prefix}${cleaned_line}🆔 ${this_id}`;
                 if (idx > 0) {
                     // Add the blocks after the very first task
-                    if (is_parallel) {
+                    if (is_parallel && current_nesting > 0) {
+                        // Parallel mode: block on parent level
                         this_line += ` ⛔ ${nesting_ids[current_nesting - 1]}`;
-                    } else {
+                    } else if (!is_parallel) {
+                        // Sequential mode: block on previous task
                         this_line += ` ⛔ ${nesting_ids[nesting_ids.length - 1]}`;
                     }
+                    // else: parallel mode at root level (current_nesting=0) - no blocker
                 }
 
                 // Add an automatic tag if we need it
@@ -300,8 +326,13 @@ export default class Helper {
                 lines += this_line;
                 idx += 1;
                 if (is_parallel) {
-                    if (nesting_ids[nesting_ids.length - 1]) nesting_ids[nesting_ids.length - 1] += ",";
-                    nesting_ids[nesting_ids.length - 1] += `${this_id}`;
+                    // In parallel mode, accumulate task IDs
+                    let current_value = nesting_ids[nesting_ids.length - 1];
+                    if (current_value && current_value !== "0:ERROR!" && current_value !== "") {
+                        nesting_ids[nesting_ids.length - 1] += `,${this_id}`;
+                    } else {
+                        nesting_ids[nesting_ids.length - 1] = this_id;
+                    }
                 } else {
                     nesting_ids[nesting_ids.length - 1] = this_id;
                 }
@@ -329,6 +360,7 @@ export default class Helper {
         let lines;
         if (add_ids) {
             lines = Helper.addTaskIDs(blockContent, prefix, settings.automaticTagNames,
+                settings.rootTaskBehavior == Nestingbehavior.ParallelExecution,
                 settings.nestedTaskBehavior == Nestingbehavior.ParallelExecution,
                 settings.idPrefixMethod == PrefixMethod.UsePrefix,
                 settings.randomIDLength, settings.sequentialStartNumber, settings.debug, tabSize)
