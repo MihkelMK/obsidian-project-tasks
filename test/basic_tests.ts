@@ -512,6 +512,12 @@ describe('testing the adding of block ids to some tasks', () => {
     )
   })
 
+  test('adding block ids should preserve space indentation', () => {
+    expect(H.addTaskIDs('- [ ] one\n    - [ ] two\n        - [ ] three', 'F', [], false, false, 3, 0, false, 4)).toBe(
+           '- [ ] one 🆔 F0\n    - [ ] two 🆔 F1 ⛔ F0\n        - [ ] three 🆔 F2 ⛔ F1'
+    )
+  })
+
   test('adding block ids should retain existing tags', () => {
     expect(H.addTaskIDs('- [ ] #one', 'F', [], false, false, 1, 0))
         .toBe('- [ ] #one 🆔 F0')

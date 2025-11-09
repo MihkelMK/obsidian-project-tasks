@@ -6,6 +6,10 @@ import {editor} from "./test/basic_tests";
 export default class ProjectTasks extends Plugin {
     settings: ProjectTasksSettings;
 
+    get tabSize(): number {
+        return (this.app.vault as any).config?.tabSize || 4;
+    }
+
     async onload() {
         await this.loadSettings();
 
@@ -16,7 +20,7 @@ export default class ProjectTasks extends Plugin {
             name: "Set project ids on selection",
             editorCallback: (editor, view) => {
                 let sel = editor.getSelection();
-                let lines = Helper.addTaskIDs(sel, Helper.getPrefix(editor, this.getFilename(editor, view), this.getFileSettings(editor)), this.getFileSettings(editor).automaticTagNames, this.getFileSettings(editor).nestedTaskBehavior == Nestingbehavior.ParallelExecution, this.getFileSettings(editor).idPrefixMethod == PrefixMethod.UsePrefix, this.getFileSettings(editor).randomIDLength, this.getFileSettings(editor).sequentialStartNumber, this.getFileSettings(editor).debug);
+                let lines = Helper.addTaskIDs(sel, Helper.getPrefix(editor, this.getFilename(editor, view), this.getFileSettings(editor)), this.getFileSettings(editor).automaticTagNames, this.getFileSettings(editor).nestedTaskBehavior == Nestingbehavior.ParallelExecution, this.getFileSettings(editor).idPrefixMethod == PrefixMethod.UsePrefix, this.getFileSettings(editor).randomIDLength, this.getFileSettings(editor).sequentialStartNumber, this.getFileSettings(editor).debug, this.tabSize);
                 editor.replaceSelection(
                     `${lines}`
                 );
@@ -27,7 +31,7 @@ export default class ProjectTasks extends Plugin {
             id: "set-ids-block",
             name: "Set project ids on block",
             editorCallback: (editor, view) => {
-                Helper.blockUpdate(editor, this.getFilename(editor, view), true, this.getFileSettings(editor));
+                Helper.blockUpdate(editor, this.getFilename(editor, view), true, this.getFileSettings(editor), this.tabSize);
             }
         })
 
@@ -35,7 +39,7 @@ export default class ProjectTasks extends Plugin {
             id: "set-ids-file",
             name: "Set project ids on entire file",
             editorCallback: (editor, view) => {
-                Helper.addIDsToFile(editor, this.getFilename(editor, view), this.getFileSettings(editor));
+                Helper.addIDsToFile(editor, this.getFilename(editor, view), this.getFileSettings(editor), this.tabSize);
             }
         })
 
@@ -64,7 +68,7 @@ export default class ProjectTasks extends Plugin {
             id: "clear-ids-block",
             name: "Clear project ids on block",
             editorCallback: (editor, view) => {
-                Helper.blockUpdate(editor, this.getFilename(editor, view), false, this.getFileSettings(editor));
+                Helper.blockUpdate(editor, this.getFilename(editor, view), false, this.getFileSettings(editor), this.tabSize);
             }
         })
 
