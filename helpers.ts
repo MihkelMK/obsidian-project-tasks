@@ -137,12 +137,16 @@ export default class Helper {
     static clearBlockIDs(sel: string, automatic_tags: string[], clear_all_tags: boolean) {
         // ToDo refactor clearBlockIDs to use settings
         // Remove existing ID's
-        let remove_id = /🆔\s[\w,]+[ \t]*/g;
+        // Remove leading space if at end of line (before tags or end), otherwise remove trailing space
+        let remove_id = / 🆔\s[\w,]+(?=\s*(?:#|$))/gm;
         sel = sel.replaceAll(remove_id, '');
+        sel = sel.replaceAll(/🆔\s[\w,]+ /g, '');
 
         // Remove existing Blocks
-        let remove_block = /⛔\s[\w,]+[ \t]*/g;
+        // Remove leading space if at end of line (before tags or end), otherwise remove trailing space
+        let remove_block = / ⛔\s[\w,]+(?=\s*(?:#|$))/gm;
         sel = sel.replaceAll(remove_block, '');
+        sel = sel.replaceAll(/⛔\s[\w,]+ /g, '');
 
         // Remove the tags
         let cleaned_text = [];
