@@ -65,10 +65,9 @@ class ParsedLine {
     public task_prefix: string;
 
     constructor(public is_task: boolean, public status_type: string, public line_text: string,
-                public nesting: number) {
+                public nesting: number, public indent_string: string = '') {
         if (this.is_task) {
-            let indents = '\t'.repeat(nesting);
-            this.task_prefix = `${indents}- [${status_type}] `;
+            this.task_prefix = `${indent_string}- [${status_type}] `;
         } else {
             this.task_prefix = '';
         }
@@ -116,10 +115,19 @@ export default class Helper {
     constructor() {
     }
 
-    static getNestingLevel(task_marker: string): number {
-        // The nesting level is the number of spaces before the first "-" character
+    static getNestingLevel(task_marker: string, tabSize: number = 4): number {
+        // The nesting level is the indentation level before the first "-" character
         let parts = task_marker.replaceAll("\n", "").split("-");
-        return parts[0].length;
+        let indent = parts[0];
+
+        // Count tabs (each tab = 1 level)
+        let tabs = (indent.match(/\t/g) || []).length;
+        if (tabs > 0) {
+            return tabs;
+        }
+
+        // Count spaces (using the configured tab size)
+        return Math.floor(indent.length / tabSize);
     }
 
     static generateRandomDigits(length: number): string {
@@ -216,7 +224,7 @@ export default class Helper {
     }
 
     static addTaskIDs(sel: string, prefix: string, automatic_tags: string[], parallel: boolean, use_prefix: boolean,
-                      random_id_length: number, sequential_start: number, debug: boolean = false) {
+                      random_id_length: number, sequential_start: number, debug: boolean = false, tabSize: number = 4) {
         // ToDo refactor addTaskIDs to use the settings
         // Clear all the existing block and project ID's
         sel = Helper.clearBlockIDs(sel, automatic_tags, false);
@@ -233,7 +241,7 @@ export default class Helper {
 
         // Go through all the lines and add appropriate ID and block tags
         for (const line of sel.split(/\r?\n/)) {
-            let match = this.parseLine(line);
+            let match = this.parseLine(line, tabSize);
             if (!first) {
                 lines += "\n";
             }
@@ -307,7 +315,7 @@ export default class Helper {
         return lines;
     }
 
-    static blockUpdate(editor: SimpleEditor, filename: string, add_ids: boolean, settings: ProjectTasksSettings,) {
+    static blockUpdate(editor: SimpleEditor, filename: string, add_ids: boolean, settings: ProjectTasksSettings, tabSize: number = 4) {
         const prefix = this.getPrefix(editor, filename, settings);
 
         // Get the block boundaries
@@ -323,7 +331,7 @@ export default class Helper {
             lines = Helper.addTaskIDs(blockContent, prefix, settings.automaticTagNames,
                 settings.nestedTaskBehavior == Nestingbehavior.ParallelExecution,
                 settings.idPrefixMethod == PrefixMethod.UsePrefix,
-                settings.randomIDLength, settings.sequentialStartNumber, settings.debug)
+                settings.randomIDLength, settings.sequentialStartNumber, settings.debug, tabSize)
         } else {
             lines = Helper.clearBlockIDs(blockContent, settings.automaticTagNames,
                 settings.clearAllTags);
@@ -333,26 +341,29 @@ export default class Helper {
         editor.replaceRange(lines, {line: blockStart, ch: 0}, {line: blockEnd, ch: last_line_length});
     }
 
-    static addIDsToFile(editor: SimpleEditor, filename: string, settings: ProjectTasksSettings) {
+    static addIDsToFile(editor: SimpleEditor, filename: string, settings: ProjectTasksSettings, tabSize: number = 4) {
         let initial_cursor = editor.getCursor()
         for (let block_start of this.getAllBlockStarts(editor)) {
             editor.setCursor({line: block_start, ch: 0});
-            this.blockUpdate(editor, filename, true, settings);
+            this.blockUpdate(editor, filename, true, settings, tabSize);
         }
         editor.setCursor({line: initial_cursor.line, ch: initial_cursor.ch});
     }
 
-    static parseLine(line: string) {
+    static parseLine(line: string, tabSize: number = 4) {
         const regex = /^(\s*-\s\[([ x\-\/])]\s)?(.*)$/;
         let match = regex.exec(line);
         if (match) {
             // Was an expected line
             if (match[1]) {
                 // This is a task line
-                return new ParsedLine(true, match[2], match[3], this.getNestingLevel(line));
+                // Extract the indentation (everything before the dash)
+                let indent_match = line.match(/^(\s*)-/);
+                let indent_string = indent_match ? indent_match[1] : '';
+                return new ParsedLine(true, match[2], match[3], this.getNestingLevel(line, tabSize), indent_string);
             } else {
                 // This isn't a task line
-                return new ParsedLine(false, '', match[3], 0);
+                return new ParsedLine(false, '', match[3], 0, '');
             }
         } else {
             // Something went wrong here
