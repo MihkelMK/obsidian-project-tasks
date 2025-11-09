@@ -62,6 +62,14 @@ interface SimpleEditor {
     setValue(text: string): void;
 }
 
+interface TaskNode {
+    id: string;
+    index: number;  // Original order in file
+    parsed: ParsedLine;
+    nesting: number;
+    children: TaskNode[];
+    parent: TaskNode | null;
+}
 
 class ParsedLine {
     public task_prefix: string;
@@ -225,6 +233,16 @@ export default class Helper {
         }
     }
 
+    static getAllDescendants(node: TaskNode): string[] {
+        // Get all descendant IDs in order (depth-first traversal)
+        let descendants: string[] = [];
+        for (const child of node.children) {
+            descendants.push(child.id);
+            descendants.push(...this.getAllDescendants(child));
+        }
+        return descendants;
+    }
+
     static addTaskIDs(sel: string, prefix: string, automatic_tags: string[], root_parallel: boolean, nested_parallel: boolean, use_prefix: boolean,
                       random_id_length: number, sequential_start: number, debug: boolean = false, tabSize: number = 4) {
         // ToDo refactor addTaskIDs to use the settings
@@ -233,22 +251,80 @@ export default class Helper {
 
         if (debug) console.log(`Replaced ids and blocks to give: ${sel}`);
 
+        // PASS 1: Build tree structure and assign IDs
+        let tasks: TaskNode[] = [];
+        let all_lines: (TaskNode | ParsedLine)[] = [];  // Mix of tasks and non-task lines
+        let idx = 0;
+        let parent_stack: TaskNode[] = [];  // Stack to track current parent at each nesting level
+
+        for (const line of sel.split(/\r?\n/)) {
+            let match = this.parseLine(line, tabSize);
+
+            // Is this a task line at all?
+            if (match.is_task) {
+                // Get an id to use
+                let this_id: string;
+                if (use_prefix) {
+                    this_id = `${prefix}${Helper.generateRandomDigits(random_id_length)}`;
+                } else {
+                    this_id = `${prefix}${idx + sequential_start}`;
+                }
+
+                // Create task node
+                let task_node: TaskNode = {
+                    id: this_id,
+                    index: idx,
+                    parsed: match,
+                    nesting: match.nesting,
+                    children: [],
+                    parent: null
+                };
+
+                // Build parent-child relationships
+                // Adjust parent stack based on nesting level
+                while (parent_stack.length > 0 && parent_stack[parent_stack.length - 1].nesting >= match.nesting) {
+                    parent_stack.pop();
+                }
+
+                // Set parent if we have one
+                if (parent_stack.length > 0) {
+                    let parent = parent_stack[parent_stack.length - 1];
+                    task_node.parent = parent;
+                    parent.children.push(task_node);
+                }
+
+                // Add to parent stack for potential children
+                parent_stack.push(task_node);
+
+                tasks.push(task_node);
+                all_lines.push(task_node);
+                idx += 1;
+            } else {
+                // Not a task line so just keep it as is
+                all_lines.push(match);
+            }
+        }
+
+        // PASS 2: Generate output with blockers
         let lines = "";
         let first = true;
-        let idx = 0;
         let nesting_ids = ["0:ERROR!"];
         let current_nesting = 0;
         let is_parallel = root_parallel;
         let this_id;
 
         // Go through all the lines and add appropriate ID and block tags
-        for (const line of sel.split(/\r?\n/)) {
-            let match = this.parseLine(line, tabSize);
+        for (const item of all_lines) {
             if (!first) {
                 lines += "\n";
             }
+
             // Is this a task line at all?
-            if (match.is_task) {
+            if ('id' in item) {
+                let task = item as TaskNode;
+                let match = task.parsed;
+                this_id = task.id;
+
                 // Watch out for changes in nesting
                 let nesting_depth = match.nesting;
                 if (nesting_depth > current_nesting) {
@@ -291,18 +367,12 @@ export default class Helper {
                     }
                 }
                 let this_line;
-                // Get an id to use
-                if (use_prefix) {
-                    this_id = `${prefix}${Helper.generateRandomDigits(random_id_length)}`;
-                } else {
-                    this_id = `${prefix}${idx + sequential_start}`;
-                }
                 // Add the id into there
                 let cleaned_line = match.line_text;
                 // Add a space at the end if needed
                 if (cleaned_line != "") cleaned_line += " ";
                 this_line = `${match.task_prefix}${cleaned_line}🆔 ${this_id}`;
-                if (idx > 0) {
+                if (task.index > 0) {
                     // Add the blocks after the very first task
                     if (is_parallel && current_nesting > 0) {
                         // Parallel mode: block on parent level
@@ -324,7 +394,6 @@ export default class Helper {
 
                 // Append this line
                 lines += this_line;
-                idx += 1;
                 if (is_parallel) {
                     // In parallel mode, accumulate task IDs
                     let current_value = nesting_ids[nesting_ids.length - 1];
@@ -339,7 +408,8 @@ export default class Helper {
                 if (debug) console.log(`Nesting level ${current_nesting}, ids ${nesting_ids}`);
             } else {
                 // Not a task line so just keep it as is
-                lines += match.line_text;
+                let parsed = item as ParsedLine;
+                lines += parsed.line_text;
             }
             first = false;
         }
