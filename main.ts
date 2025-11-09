@@ -2,24 +2,21 @@ import {App, Editor, MarkdownFileInfo, Plugin, PluginSettingTab, Setting} from '
 import Helper, {DEFAULT_SETTINGS, Nestingbehavior, PrefixMethod, ProjectTasksSettings} from "./helpers";
 import {editor} from "./test/basic_tests";
 
-// Turn on to allow debugging in the console
-const DEBUG = false;
-
 
 export default class ProjectTasks extends Plugin {
     settings: ProjectTasksSettings;
 
     async onload() {
-        if (DEBUG) console.log('Project Tasks starting');
-
         await this.loadSettings();
+
+        if (this.settings.debug) console.log('Project Tasks starting');
 
         this.addCommand({
             id: "set-ids",
             name: "Set project ids on selection",
             editorCallback: (editor, view) => {
                 let sel = editor.getSelection();
-                let lines = Helper.addTaskIDs(sel, Helper.getPrefix(editor, this.getFilename(editor, view), this.getFileSettings(editor)), this.getFileSettings(editor).automaticTagNames, this.getFileSettings(editor).nestedTaskBehavior == Nestingbehavior.ParallelExecution, this.getFileSettings(editor).idPrefixMethod == PrefixMethod.UsePrefix, this.getFileSettings(editor).randomIDLength, this.getFileSettings(editor).sequentialStartNumber);
+                let lines = Helper.addTaskIDs(sel, Helper.getPrefix(editor, this.getFilename(editor, view), this.getFileSettings(editor)), this.getFileSettings(editor).automaticTagNames, this.getFileSettings(editor).nestedTaskBehavior == Nestingbehavior.ParallelExecution, this.getFileSettings(editor).idPrefixMethod == PrefixMethod.UsePrefix, this.getFileSettings(editor).randomIDLength, this.getFileSettings(editor).sequentialStartNumber, this.getFileSettings(editor).debug);
                 editor.replaceSelection(
                     `${lines}`
                 );
@@ -257,6 +254,16 @@ class ProjectTasksSettingsTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.overrideSettings)
                 .onChange(async (value) => {
                     this.plugin.settings.overrideSettings = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Debug mode')
+            .setDesc('Enable debug logging to the console for troubleshooting')
+            .addToggle(text => text
+                .setValue(this.plugin.settings.debug)
+                .onChange(async (value) => {
+                    this.plugin.settings.debug = value;
                     await this.plugin.saveSettings();
                 }));
 

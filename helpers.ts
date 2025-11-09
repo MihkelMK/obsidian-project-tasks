@@ -2,7 +2,6 @@
 let matter = require("gray-matter");
 
 const BLOCK_BOUNDARY = /^#+\s/;
-const DEBUG = true;
 
 
 export enum PrefixMethod {
@@ -27,6 +26,7 @@ export interface ProjectTasksSettings {
     clearAllTags: boolean;
     nestedTaskBehavior: Nestingbehavior;
     overrideSettings: boolean;
+    debug: boolean;
 }
 
 export const DEFAULT_SETTINGS: ProjectTasksSettings = {
@@ -40,6 +40,7 @@ export const DEFAULT_SETTINGS: ProjectTasksSettings = {
     clearAllTags: false,
     nestedTaskBehavior: Nestingbehavior.ParallelExecution,
     overrideSettings: true,
+    debug: false
 }
 
 interface SimpleCursor {
@@ -211,12 +212,12 @@ export default class Helper {
     }
 
     static addTaskIDs(sel: string, prefix: string, automatic_tags: string[], parallel: boolean, use_prefix: boolean,
-                      random_id_length: number, sequential_start: number) {
+                      random_id_length: number, sequential_start: number, debug: boolean = false) {
         // ToDo refactor addTaskIDs to use the settings
         // Clear all the existing block and project ID's
         sel = Helper.clearBlockIDs(sel, automatic_tags, false);
 
-        if (DEBUG) console.log(`Replaced ids and blocks to give: ${sel}`);
+        if (debug) console.log(`Replaced ids and blocks to give: ${sel}`);
 
         let lines = "";
         let first = true;
@@ -292,7 +293,7 @@ export default class Helper {
                 } else {
                     nesting_ids[nesting_ids.length - 1] = this_id;
                 }
-                if (DEBUG) console.log(`Nesting level ${current_nesting}, ids ${nesting_ids}`);
+                if (debug) console.log(`Nesting level ${current_nesting}, ids ${nesting_ids}`);
             } else {
                 // Not a task line so just keep it as is
                 lines += match.line_text;
@@ -311,20 +312,20 @@ export default class Helper {
         let last_line_length = editor.getLine(blockEnd + 1).length;
 
         const blockContent = editor.getRange({line: blockStart, ch: 0}, {line: blockEnd, ch: last_line_length});
-        if (DEBUG) console.log(`Start ${blockStart}, End ${blockEnd}, last length ${last_line_length}\nOrig: ${blockContent}`);
+        if (settings.debug) console.log(`Start ${blockStart}, End ${blockEnd}, last length ${last_line_length}\nOrig: ${blockContent}`);
 
         let lines;
         if (add_ids) {
             lines = Helper.addTaskIDs(blockContent, prefix, settings.automaticTagNames,
                 settings.nestedTaskBehavior == Nestingbehavior.ParallelExecution,
                 settings.idPrefixMethod == PrefixMethod.UsePrefix,
-                settings.randomIDLength, settings.sequentialStartNumber)
+                settings.randomIDLength, settings.sequentialStartNumber, settings.debug)
         } else {
             lines = Helper.clearBlockIDs(blockContent, settings.automaticTagNames,
                 settings.clearAllTags);
         }
 
-        if (DEBUG) console.log(`Start ${blockStart}, End ${blockEnd}, last length ${last_line_length}\nOrig: ${blockContent}\nNew: ${lines}`);
+        if (settings.debug) console.log(`Start ${blockStart}, End ${blockEnd}, last length ${last_line_length}\nOrig: ${blockContent}\nNew: ${lines}`);
         editor.replaceRange(lines, {line: blockStart, ch: 0}, {line: blockEnd, ch: last_line_length});
     }
 
