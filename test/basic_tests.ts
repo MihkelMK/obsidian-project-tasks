@@ -181,7 +181,7 @@ describe('testing the generation of a prefix from a string', () => {
 describe('testing of clearing of the block ID\'s from some text', () => {
   for (let char of ['🆔', '⛔']) {
     test(`clear ${char} block IDs end of line`, () => {
-      expect(H.clearBlockIDs(`This ${char} Hello`, ['tag'], false)).toBe('This ');
+      expect(H.clearBlockIDs(`This ${char} Hello`, ['tag'], false)).toBe('This');
     })
 
     test(`clear ${char} block IDs beginning of line`, () => {
@@ -407,6 +407,13 @@ describe('testing the adding of block ids to some tasks', () => {
   test('adding block ids to a line with them on already', () => {
     expect(H.addTaskIDs('- [ ] 🆔 O7 ⛔ O6 #tag', 'O', ['tag'], true, false, 3, 0))
         .toBe('- [ ] 🆔 O0 #tag')
+  })
+
+  test('running add ids command twice should give same result as running once', () => {
+    const input = '- [ ] one\n- [ ] two\n- [ ] three';
+    const firstRun = H.addTaskIDs(input, 'Proj', [], false, false, 3, 0);
+    const secondRun = H.addTaskIDs(firstRun, 'Proj', [], false, false, 3, 0);
+    expect(secondRun).toBe(firstRun);
   })
 
   test('file tasks should add ids not using prefix and no tag', () => {
