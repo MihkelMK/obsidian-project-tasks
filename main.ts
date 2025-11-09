@@ -141,6 +141,10 @@ class ProjectTasksSettingsTab extends PluginSettingTab {
         containerEl.empty();
 
         new Setting(containerEl)
+            .setName('ID Generation')
+            .setHeading();
+
+        new Setting(containerEl)
             .setName('Project ID method')
             .setDesc('Choose how the ID will be determined')
             .addDropdown(dropDown => {
@@ -209,6 +213,9 @@ class ProjectTasksSettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
+        new Setting(containerEl)
+            .setName('Tag Settings')
+            .setHeading();
 
         new Setting(containerEl)
             .setName('Automatically add tags')
@@ -235,6 +242,10 @@ class ProjectTasksSettingsTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
+            .setName('Task Behavior')
+            .setHeading();
+
+        new Setting(containerEl)
             .setName('Nested tags behavior')
             .setDesc('Determines whether nested tags will create parallel execution tags or sequential')
             .addDropdown(dropDown => {
@@ -246,6 +257,10 @@ class ProjectTasksSettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
             });
+
+        new Setting(containerEl)
+            .setName('Advanced')
+            .setHeading();
 
         new Setting(containerEl)
             .setName('Override settings from file front matter')
