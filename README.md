@@ -107,6 +107,21 @@ You can control how tasks depend on each other at different hierarchy levels:
 - **Top-Down** (default): Children depend on parents - child tasks wait for their parent task to complete before they can start
 - **Bottom-Up**: Parents depend on children - parent tasks wait for all their child tasks to complete before they can be marked as done
 
+**Add all nested dependencies**: Controls whether tasks list all nested subtask dependencies or only immediate blockers within their tree.
+- **Enabled** (default): Tasks list all nested subtask IDs explicitly
+  - Top-Down: Siblings block on previous sibling AND all tasks nested under it
+  - Bottom-Up: Parents block on all descendants (children and grandchildren)
+- **Disabled**: Tasks list only immediate blockers, relying on transitive dependency resolution
+  - Top-Down: Siblings block only on their direct previous sibling
+  - Bottom-Up sequential: Parents block only on their last child (which depends on earlier siblings)
+  - Bottom-Up parallel: Parents block on all direct children (they're independent)
+
+**Cross-root dependencies** (when Root Task Behavior is Sequential and Dependency Direction is Bottom-Up):
+- When root tasks are sequential, the second root depends on the first root completing
+- Since the first root can't complete until its children are done, the second root's children inherit this dependency
+- Cross-root dependencies always use only the root task ID (not its nested children), regardless of the "Add all nested dependencies" setting
+- Example: If Root2 depends on Root1, then Root2's children will block on Root1's ID, keeping dependency lists readable
+
 These settings can be configured in the plugin settings or overridden per-file using front matter.
 
 ### Clear Task ID's
@@ -212,5 +227,6 @@ It is important to use the internal name **and type** of the settings. These are
 | Root Task Behavior      |rootTaskBehavior| **Number**| 1=Root tasks run in parallel, 2=Root tasks run sequentially                                |
 | Nested Task Behavior    |nestedTaskBehavior| **Number**| 1=Nested tasks run in parallel, 2=Nested tasks run sequentially                            |
 | Dependency Direction    |dependencyDirection| **Number**| 1=Top-down (children wait for parents), 2=Bottom-up (parents wait for children)            |
+| Add Nested Dependencies |explicitDependencies| **Boolean**| Whether to include all nested subtask IDs in dependsOn or only immediate blockers          |
 
 
