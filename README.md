@@ -60,6 +60,38 @@ The tasks are now linked as a sequential set. All tasks except the first will be
 
 The format of the project ID's can be controlled using the [Options](#options)
 
+### Clear Task ID's
+
+Removes all task ID's and dependencies from all tasks. You can use this if you want to revert back to using disconnected tasks. It removes all ID's and dependencies, even ones which you may have created manually.
+
+```Command: clear-ids```
+
+![](docs/clear-ids-command.gif)
+
+### Scopes
+
+There are three different scopes which affect which tasks are converted to project tasks (or cleared).
+
+1. Current Selection - impacts only tasks which are currently selected
+2. Current Block - impacts tasks in the block or section where the cursor is currently. Blocks begin and end with a Markdown Header. The beginning or end of the file act as block boundaries.
+3. Current File - impacts all tasks in the current file
+
+The different commands for creating project ids are:
+
+```
+- Command: set-ids
+- Command: set-ids-block
+- Command: set-ids-file
+```
+
+The corresponding commands for clearing project ids are:
+
+```
+- Command: clear-ids
+- Command: clear-ids-block
+- Command: clear-ids-file
+```
+
 ### Project Views
 
 By adding tags to the tasks you can also use the Project View, which is useful to show the currently active tasks. Only tasks that are active, due and not blocked by other tasks will be shown.
@@ -260,39 +292,6 @@ These settings can be configured in:
 - File front matter (overrides for specific files)
 
 See the [Using Front Matter](#using-front-matter) section for per-file configuration.
-
-### Clear Task ID's
-
-Removes all task ID's and dependencies from all tasks. You can use this if you want to revert back to using disconnected tasks. It removes all ID's and dependencies, even ones which you may have created manually.
-
-```Command: clear-ids```
-
-![](docs/clear-ids-command.gif)
-
-### Scopes
-
-There are three different scopes which affect which tasks are converted to project tasks (or cleared).
-
-1. Current Selection - impacts only tasks which are currently selected
-2. Current Block - impacts tasks in the block or section where the cursor is currently. Blocks begin and end with a Markdown Header. The beginning or end of the file act as block boundaries.
-3. Current File - impacts all tasks in the current file
-
-The different commands for creating project ids are:
-
-```
-- Command: set-ids
-- Command: set-ids-block
-- Command: set-ids-file
-```
-
-The corresponding commands for clearing project ids are:
-
-```
-- Command: clear-ids
-- Command: clear-ids-block
-- Command: clear-ids-file
-```
-
 
 
 
