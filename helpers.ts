@@ -252,6 +252,27 @@ export default class Helper {
         return descendants;
     }
 
+    static getLeafDescendants(node: TaskNode): TaskNode[] {
+        // Get all leaf descendants (tasks with no children)
+        let leaves: TaskNode[] = [];
+        for (const child of node.children) {
+            if (child.children.length === 0) {
+                leaves.push(child);
+            } else {
+                leaves.push(...this.getLeafDescendants(child));
+            }
+        }
+        return leaves;
+    }
+
+    static getFirstLeaf(node: TaskNode): TaskNode | null {
+        // Get the first leaf descendant (depth-first)
+        if (node.children.length === 0) {
+            return node;
+        }
+        return this.getFirstLeaf(node.children[0]);
+    }
+
     static addTaskIDs(sel: string, prefix: string, automatic_tags: string[], root_parallel: boolean, nested_parallel: boolean, bottom_up: boolean, explicit_dependencies: boolean, use_prefix: boolean,
                       random_id_length: number, sequential_start: number, debug: boolean = false, tabSize: number = 4) {
         // ToDo refactor addTaskIDs to use the settings
@@ -319,9 +340,77 @@ export default class Helper {
         if (bottom_up) {
             for (const task of tasks) {
                 if (task.children.length > 0) {
-                    // Get all descendant IDs for this task
-                    let descendant_ids = this.getAllDescendants(task);
-                    child_blockers.set(task.id, descendant_ids.join(','));
+                    let child_ids: string[];
+                    if (explicit_dependencies) {
+                        // Explicit mode: all descendants
+                        child_ids = this.getAllDescendants(task);
+                    } else {
+                        // Implicit mode: depends on nested behavior
+                        if (nested_parallel) {
+                            // Parallel: need all direct children (they're independent)
+                            child_ids = task.children.map(child => child.id);
+                        } else {
+                            // Sequential: only need last child (it depends on the others)
+                            child_ids = [task.children[task.children.length - 1].id];
+                        }
+                    }
+                    child_blockers.set(task.id, child_ids.join(','));
+                }
+            }
+        }
+
+        // Cross-level dependency inheritance (for bottom-up + sequential)
+        // When a task depends on a previous sibling and has children, those children inherit the blocker
+        let inherited_blockers = new Map<string, string>();  // task_id -> inherited blocker ID
+        if (bottom_up) {
+            for (const task of tasks) {
+                // Check if this task has a previous sibling (sequential mode)
+                let previous_sibling: TaskNode | null = null;
+
+                if (task.parent === null) {
+                    // Root level: check root_parallel
+                    if (!root_parallel) {
+                        // Find previous root sibling
+                        let root_tasks = tasks.filter(t => t.parent === null);
+                        let idx = root_tasks.indexOf(task);
+                        if (idx > 0) {
+                            previous_sibling = root_tasks[idx - 1];
+                        }
+                    }
+                } else {
+                    // Nested level: check nested_parallel
+                    if (!nested_parallel) {
+                        // Find previous sibling in parent's children
+                        let idx = task.parent.children.indexOf(task);
+                        if (idx > 0) {
+                            previous_sibling = task.parent.children[idx - 1];
+                        }
+                    }
+                }
+
+                // If this task has a previous sibling and has children, apply inheritance
+                if (previous_sibling !== null && task.children.length > 0) {
+                    let blocker_id = previous_sibling.id;
+
+                    // Determine which children get the inherited blocker
+                    let target_children: TaskNode[] = [];
+
+                    if (explicit_dependencies || nested_parallel) {
+                        // Apply to all leaf descendants
+                        target_children = this.getLeafDescendants(task);
+                    } else {
+                        // Implicit + sequential: only first leaf in each direct child's subtree
+                        // Actually, only the very first leaf overall
+                        let first_leaf = this.getFirstLeaf(task);
+                        if (first_leaf) {
+                            target_children = [first_leaf];
+                        }
+                    }
+
+                    // Mark these children to receive the inherited blocker
+                    for (const child of target_children) {
+                        inherited_blockers.set(child.id, blocker_id);
+                    }
                 }
             }
         }
@@ -369,9 +458,11 @@ export default class Helper {
                         // Determine the new mode after decrement
                         let new_is_parallel = (current_nesting > 0) ? nested_parallel : root_parallel;
 
-                        // Merge nested level into parent level (only for top-down mode)
-                        // In bottom-up mode, each level is independent, so no merging needed
-                        if (!bottom_up) {
+                        // Merge nested level into parent level (only for top-down + explicit mode)
+                        // Skip merging when:
+                        // - Bottom-up mode: each level is independent
+                        // - Implicit mode: we only want direct dependencies (nested tasks are not direct siblings)
+                        if (!bottom_up && explicit_dependencies) {
                             if (current_nesting === 0 && root_parallel) {
                                 // Exiting back to root parallel mode - clear blockers
                                 nesting_ids[0] = "";
@@ -410,11 +501,20 @@ export default class Helper {
                     }
                     // Add sibling blockers (sequential mode only)
                     // Check if there's a previous sibling at the current nesting level
+                    // In implicit mode, skip if task has children (transitively blocked through descendants)
                     if (!is_parallel && nesting_ids[current_nesting] !== undefined && nesting_ids[current_nesting] !== "") {
                         let sibling_blocker = nesting_ids[current_nesting];
                         if (sibling_blocker !== "0:ERROR!") {
-                            blockers.push(sibling_blocker);
+                            // Only add if: explicit mode OR task is a leaf (no children)
+                            if (explicit_dependencies || task.children.length === 0) {
+                                blockers.push(sibling_blocker);
+                            }
                         }
+                    }
+                    // Add inherited blocker (cross-level dependency)
+                    let inherited_blocker = inherited_blockers.get(this_id);
+                    if (inherited_blocker) {
+                        blockers.push(inherited_blocker);
                     }
                 } else {
                     // Top-down: children depend on parents
