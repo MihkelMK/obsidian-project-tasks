@@ -93,36 +93,173 @@ is not blocked
 
 ### Task Behavior
 
-You can control how tasks depend on each other at different hierarchy levels:
+The plugin provides four settings that control how tasks depend on each other. These work together to create different dependency patterns for your projects.
 
-**Root Task Behavior**: Controls whether top-level (non-nested) tasks execute in parallel or sequentially.
-- **Sequential Execution** (default): Each root task waits for the previous root task to complete
-- **Parallel Execution**: Root tasks have no dependencies on each other
+#### Overview of Settings
 
-**Nested Task Behavior**: Controls whether child tasks execute in parallel or sequentially.
-- **Parallel Execution** (default): Sibling tasks at the same nesting level all depend on their parent task and can execute in parallel
-- **Sequential Execution**: Each child task depends on the previous sibling task
+| Setting | Options | Description |
+|---------|---------|-------------|
+| **Root Task Behavior** | Parallel (default) / Sequential | Whether top-level tasks run independently or wait for each other |
+| **Nested Task Behavior** | Parallel (default) / Sequential | Whether sibling child tasks run independently or wait for each other |
+| **Dependency Direction** | Top-Down (default) / Bottom-Up | Whether children wait for parents, or parents wait for children |
+| **Add all nested dependencies** | Enabled (default) / Disabled | Whether to list all blockers explicitly or only immediate ones |
 
-**Dependency Direction**: Controls the direction of dependencies between parent and child tasks.
-- **Top-Down** (default): Children depend on parents - child tasks wait for their parent task to complete before they can start
-- **Bottom-Up**: Parents depend on children - parent tasks wait for all their child tasks to complete before they can be marked as done
+#### Example Task Structure
 
-**Add all nested dependencies**: Controls whether tasks list all nested subtask dependencies or only immediate blockers within their tree.
-- **Enabled** (default): Tasks list all nested subtask IDs explicitly
-  - Top-Down: Siblings block on previous sibling AND all tasks nested under it
-  - Bottom-Up: Parents block on all descendants (children and grandchildren)
-- **Disabled**: Tasks list only immediate blockers, relying on transitive dependency resolution
-  - Top-Down: Siblings block only on their direct previous sibling
-  - Bottom-Up sequential: Parents block only on their last child (which depends on earlier siblings)
-  - Bottom-Up parallel: Parents block on all direct children (they're independent)
+We'll use this simple task hierarchy for all examples below:
 
-**Cross-root dependencies** (when Root Task Behavior is Sequential and Dependency Direction is Bottom-Up):
-- When root tasks are sequential, the second root depends on the first root completing
-- Since the first root can't complete until its children are done, the second root's children inherit this dependency
-- Cross-root dependencies always use only the root task ID (not its nested children), regardless of the "Add all nested dependencies" setting
-- Example: If Root2 depends on Root1, then Root2's children will block on Root1's ID, keeping dependency lists readable
+- [ ] Parent 1
+	- [ ] Child 1.1
+		- [ ] GrandChild 1.1.1
+	- [ ] Child 1.2
+- [ ] Parent 2
+	- [ ] Child 2.1
 
-These settings can be configured in the plugin settings or overridden per-file using front matter.
+---
+
+#### Root Task Behavior
+
+Controls whether top-level tasks have dependencies on each other.
+
+**Sequential Execution:**
+
+- [ ] Parent 1 🆔 BNC0
+	- [ ] Child 1.1 🆔 BNC1
+		- [ ] GrandChild 1.1.1 🆔 BNC2
+	- [ ] Child 1.2 🆔 BNC3
+- [ ] Parent 2 🆔 BNC4 ⛔ BNC0
+	- [ ] Child 2.1 🆔 BNC5
+
+Parent 2 waits for Parent 1 to complete.
+
+**Parallel Execution (default):**
+
+- [ ] Parent 1 🆔 BNC0
+	- [ ] Child 1.1 🆔 BNC1
+		- [ ] GrandChild 1.1.1 🆔 BNC2
+	- [ ] Child 1.2 🆔 BNC3
+- [ ] Parent 2 🆔 BNC4
+	- [ ] Child 2.1 🆔 BNC5
+
+Parent 2 can start immediately (no dependency on Parent 1).
+
+---
+
+#### Nested Task Behavior
+
+Controls whether sibling tasks at the same level have dependencies on each other.
+
+**Sequential Execution:**
+
+- [ ] Parent 1 🆔 BNC0
+	- [ ] Child 1.1 🆔 BNC1
+		- [ ] GrandChild 1.1.1 🆔 BNC2
+	- [ ] Child 1.2 🆔 BNC3 ⛔ BNC1
+- [ ] Parent 2 🆔 BNC4
+	- [ ] Child 2.1 🆔 BNC5
+
+Child 1.2 waits for Child 1.1 to complete.
+
+**Parallel Execution (default):**
+
+- [ ] Parent 1 🆔 BNC0
+	- [ ] Child 1.1 🆔 BNC1
+		- [ ] GrandChild 1.1.1 🆔 BNC2
+	- [ ] Child 1.2 🆔 BNC3
+- [ ] Parent 2 🆔 BNC4
+	- [ ] Child 2.1 🆔 BNC5
+
+Child 1.1 and Child 1.2 can run independently (no sibling dependencies).
+
+---
+
+#### Dependency Direction
+
+Controls the direction of dependencies between parent and child tasks.
+
+**Top-Down (default) - Children wait for parents:**
+
+- [ ] Parent 1 🆔 BNC0
+	- [ ] Child 1.1 🆔 BNC1 ⛔ BNC0
+		- [ ] GrandChild 1.1.1 🆔 BNC2 ⛔ BNC1
+	- [ ] Child 1.2 🆔 BNC3 ⛔ BNC0
+- [ ] Parent 2 🆔 BNC4
+	- [ ] Child 2.1 🆔 BNC5 ⛔ BNC4
+
+Children can't start until their parent completes. Use this for decomposition (break down a task into steps).
+
+**Bottom-Up - Parents wait for children:**
+
+- [ ] Parent 1 🆔 BNC0 ⛔ BNC1,BNC2,BNC3
+	- [ ] Child 1.1 🆔 BNC1 ⛔ BNC2
+		- [ ] GrandChild 1.1.1 🆔 BNC2
+	- [ ] Child 1.2 🆔 BNC3
+- [ ] Parent 2 🆔 BNC4 ⛔ BNC5
+	- [ ] Child 2.1 🆔 BNC5
+
+Parents can't complete until all their children are done. Use this for rollups (parent represents milestone).
+
+---
+
+#### Add all nested dependencies
+
+Controls whether tasks list all blockers explicitly or only immediate ones.
+
+**Example with Bottom-Up + Sequential Nested:**
+
+*Enabled (default) - List all blockers:*
+
+- [ ] Parent 1 🆔 BNC0 ⛔ BNC1,BNC2,BNC3
+	- [ ] Child 1.1 🆔 BNC1 ⛔ BNC2
+		- [ ] GrandChild 1.1.1 🆔 BNC2
+	- [ ] Child 1.2 🆔 BNC3 ⛔ BNC1,BNC2
+- [ ] Parent 2 🆔 BNC4 ⛔ BNC5
+	- [ ] Child 2.1 🆔 BNC5
+
+Parent 1 explicitly lists all descendants (BNC1, BNC2, BNC3). Child 1.2 lists its previous sibling (BNC1) AND the nested task under that sibling (BNC2).
+
+*Disabled - Only immediate blockers:*
+
+- [ ] Parent 1 🆔 BNC0 ⛔ BNC3
+	- [ ] Child 1.1 🆔 BNC1 ⛔ BNC2
+		- [ ] GrandChild 1.1.1 🆔 BNC2
+	- [ ] Child 1.2 🆔 BNC3 ⛔ BNC1
+- [ ] Parent 2 🆔 BNC4 ⛔ BNC5
+	- [ ] Child 2.1 🆔 BNC5
+
+Parent 1 only lists its last child (BNC3). Child 1.2 only lists its previous sibling (BNC1). Both are still transitively blocked by all earlier tasks through the dependency chain.
+
+**When to use each mode:**
+- **Enabled**: Better for task management tools that don't auto-resolve transitive dependencies. Every blocker is explicit.
+- **Disabled**: Cleaner dependency lists. Relies on the task system to understand "if A blocks B, and B blocks C, then A blocks C."
+
+---
+
+#### Cross-Root Dependencies (Bottom-Up + Sequential Root)
+
+When using Bottom-Up direction with Sequential root tasks, children of later roots inherit the blocker from earlier roots.
+
+**Example:**
+- [ ] Parent 1 🆔 BNC0 ⛔ BNC1,BNC2,BNC3
+	- [ ] Child 1.1 🆔 BNC1 ⛔ BNC2
+		- [ ] GrandChild 1.1.1 🆔 BNC2
+	- [ ] Child 1.2 🆔 BNC3
+- [ ] Parent 2 🆔 BNC4 ⛔ BNC0,BNC5
+	- [ ] Child 2.1 🆔 BNC5 ⛔ BNC0
+
+**Why?** Parent 2 depends on Parent 1. Therefore, work on Child 2.1 can't start until Parent 1 completes, which means it's blocked by Parent 1's completion.
+
+**Note:** Cross-root dependencies always reference only the root task ID (BNC0), not its children, regardless of the "Add all nested dependencies" setting. This keeps dependency lists readable even with complex projects.
+
+---
+
+#### Configuration
+
+These settings can be configured in:
+- Plugin settings (applies globally)
+- File front matter (overrides for specific files)
+
+See the [Using Front Matter](#using-front-matter) section for per-file configuration.
 
 ### Clear Task ID's
 
