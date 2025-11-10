@@ -622,8 +622,8 @@ describe('testing the adding of block ids to some tasks', () => {
         '- [ ] Task C', 'A', [], false, true, true, true, false, 3, 0))
         .toBe('- [ ] Task A 🆔 A0\n' +
             '- [ ] Task B 🆔 A1 ⛔ A2,A3,A0\n' +
-            '\t- [ ] Task B1 🆔 A2\n' +
-            '\t- [ ] Task B2 🆔 A3\n' +
+            '\t- [ ] Task B1 🆔 A2 ⛔ A0\n' +
+            '\t- [ ] Task B2 🆔 A3 ⛔ A0\n' +
             '- [ ] Task C 🆔 A4 ⛔ A1'
         )
   })
@@ -650,8 +650,8 @@ describe('testing the adding of block ids to some tasks', () => {
         '- [ ] Task C', 'A', [], false, false, true, true, false, 3, 0))
         .toBe('- [ ] Task A 🆔 A0\n' +
             '- [ ] Task B 🆔 A1 ⛔ A2,A3,A0\n' +
-            '\t- [ ] Task B1 🆔 A2\n' +
-            '\t- [ ] Task B2 🆔 A3 ⛔ A2\n' +
+            '\t- [ ] Task B1 🆔 A2 ⛔ A0\n' +
+            '\t- [ ] Task B2 🆔 A3 ⛔ A2,A0\n' +
             '- [ ] Task C 🆔 A4 ⛔ A1'
         )
   })
@@ -702,7 +702,103 @@ describe('testing the adding of block ids to some tasks', () => {
             '\t- [ ] Child1.1 🆔 A1 ⛔ A2\n' +
             '\t\t- [ ] Deep1 🆔 A2\n' +
             '- [ ] Root2 🆔 A3 ⛔ A4,A0\n' +
-            '\t- [ ] Child2.1 🆔 A4'
+            '\t- [ ] Child2.1 🆔 A4 ⛔ A0'
+        )
+  })
+
+  test('implicit: root sequential, nested sequential', () => {
+    expect(H.addTaskIDs('- [ ] Root1\n' +
+        '\t- [ ] Child1.1\n' +
+        '\t\t- [ ] GrandChild1.1.1\n' +
+        '\t\t- [ ] GrandChild1.1.2\n' +
+        '\t- [ ] Child1.2\n' +
+        '- [ ] Root2', 'A', [], false, false, true, false, false, 3, 0))
+        .toBe('- [ ] Root1 🆔 A0 ⛔ A4\n' +
+            '\t- [ ] Child1.1 🆔 A1 ⛔ A3\n' +
+            '\t\t- [ ] GrandChild1.1.1 🆔 A2\n' +
+            '\t\t- [ ] GrandChild1.1.2 🆔 A3 ⛔ A2\n' +
+            '\t- [ ] Child1.2 🆔 A4 ⛔ A1\n' +
+            '- [ ] Root2 🆔 A5 ⛔ A0'
+        )
+  })
+
+  test('implicit: root parallel, nested sequential', () => {
+    expect(H.addTaskIDs('- [ ] Root1\n' +
+        '\t- [ ] Child1.1\n' +
+        '\t\t- [ ] GrandChild1.1.1\n' +
+        '\t\t- [ ] GrandChild1.1.2\n' +
+        '\t- [ ] Child1.2\n' +
+        '- [ ] Root2', 'A', [], true, false, true, false, false, 3, 0))
+        .toBe('- [ ] Root1 🆔 A0 ⛔ A4\n' +
+            '\t- [ ] Child1.1 🆔 A1 ⛔ A3\n' +
+            '\t\t- [ ] GrandChild1.1.1 🆔 A2\n' +
+            '\t\t- [ ] GrandChild1.1.2 🆔 A3 ⛔ A2\n' +
+            '\t- [ ] Child1.2 🆔 A4 ⛔ A1\n' +
+            '- [ ] Root2 🆔 A5'
+        )
+  })
+
+  test('implicit: root sequential, nested parallel', () => {
+    expect(H.addTaskIDs('- [ ] Root1\n' +
+        '\t- [ ] Child1.1\n' +
+        '\t\t- [ ] GrandChild1.1.1\n' +
+        '\t\t- [ ] GrandChild1.1.2\n' +
+        '\t- [ ] Child1.2\n' +
+        '- [ ] Root2', 'A', [], false, true, true, false, false, 3, 0))
+        .toBe('- [ ] Root1 🆔 A0 ⛔ A1,A4\n' +
+            '\t- [ ] Child1.1 🆔 A1 ⛔ A2,A3\n' +
+            '\t\t- [ ] GrandChild1.1.1 🆔 A2\n' +
+            '\t\t- [ ] GrandChild1.1.2 🆔 A3\n' +
+            '\t- [ ] Child1.2 🆔 A4\n' +
+            '- [ ] Root2 🆔 A5 ⛔ A0'
+        )
+  })
+
+  test('implicit: root parallel, nested parallel', () => {
+    expect(H.addTaskIDs('- [ ] Root1\n' +
+        '\t- [ ] Child1.1\n' +
+        '\t\t- [ ] GrandChild1.1.1\n' +
+        '\t\t- [ ] GrandChild1.1.2\n' +
+        '\t- [ ] Child1.2\n' +
+        '- [ ] Root2', 'A', [], true, true, true, false, false, 3, 0))
+        .toBe('- [ ] Root1 🆔 A0 ⛔ A1,A4\n' +
+            '\t- [ ] Child1.1 🆔 A1 ⛔ A2,A3\n' +
+            '\t\t- [ ] GrandChild1.1.1 🆔 A2\n' +
+            '\t\t- [ ] GrandChild1.1.2 🆔 A3\n' +
+            '\t- [ ] Child1.2 🆔 A4\n' +
+            '- [ ] Root2 🆔 A5'
+        )
+  })
+
+  test('implicit top-down: root sequential, nested sequential', () => {
+    expect(H.addTaskIDs('- [ ] Root1\n' +
+        '\t- [ ] Child1.1\n' +
+        '\t\t- [ ] GrandChild1.1.1\n' +
+        '\t\t- [ ] GrandChild1.1.2\n' +
+        '\t- [ ] Child1.2\n' +
+        '- [ ] Root2', 'A', [], false, false, false, false, false, 3, 0))
+        .toBe('- [ ] Root1 🆔 A0\n' +
+            '\t- [ ] Child1.1 🆔 A1 ⛔ A0\n' +
+            '\t\t- [ ] GrandChild1.1.1 🆔 A2 ⛔ A1\n' +
+            '\t\t- [ ] GrandChild1.1.2 🆔 A3 ⛔ A2\n' +
+            '\t- [ ] Child1.2 🆔 A4 ⛔ A1\n' +
+            '- [ ] Root2 🆔 A5 ⛔ A0'
+        )
+  })
+
+  test('implicit top-down: root parallel, nested parallel', () => {
+    expect(H.addTaskIDs('- [ ] Root1\n' +
+        '\t- [ ] Child1.1\n' +
+        '\t\t- [ ] GrandChild1.1.1\n' +
+        '\t\t- [ ] GrandChild1.1.2\n' +
+        '\t- [ ] Child1.2\n' +
+        '- [ ] Root2', 'A', [], true, true, false, false, false, 3, 0))
+        .toBe('- [ ] Root1 🆔 A0\n' +
+            '\t- [ ] Child1.1 🆔 A1 ⛔ A0\n' +
+            '\t\t- [ ] GrandChild1.1.1 🆔 A2 ⛔ A1\n' +
+            '\t\t- [ ] GrandChild1.1.2 🆔 A3 ⛔ A1\n' +
+            '\t- [ ] Child1.2 🆔 A4 ⛔ A0\n' +
+            '- [ ] Root2 🆔 A5'
         )
   })
 
