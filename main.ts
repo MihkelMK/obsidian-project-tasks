@@ -20,7 +20,7 @@ export default class ProjectTasks extends Plugin {
             name: "Set project ids on selection",
             editorCallback: (editor, view) => {
                 let sel = editor.getSelection();
-                let lines = Helper.addTaskIDs(sel, Helper.getPrefix(editor, this.getFilename(editor, view), this.getFileSettings(editor)), this.getFileSettings(editor).automaticTagNames, this.getFileSettings(editor).rootTaskBehavior == Nestingbehavior.ParallelExecution, this.getFileSettings(editor).nestedTaskBehavior == Nestingbehavior.ParallelExecution, this.getFileSettings(editor).dependencyDirection == DependencyDirection.BottomUp, this.getFileSettings(editor).idPrefixMethod == PrefixMethod.UsePrefix, this.getFileSettings(editor).randomIDLength, this.getFileSettings(editor).sequentialStartNumber, this.getFileSettings(editor).debug, this.tabSize);
+                let lines = Helper.addTaskIDs(sel, Helper.getPrefix(editor, this.getFilename(editor, view), this.getFileSettings(editor)), this.getFileSettings(editor).automaticTagNames, this.getFileSettings(editor).rootTaskBehavior == Nestingbehavior.ParallelExecution, this.getFileSettings(editor).nestedTaskBehavior == Nestingbehavior.ParallelExecution, this.getFileSettings(editor).dependencyDirection == DependencyDirection.BottomUp, this.getFileSettings(editor).explicitDependencies, this.getFileSettings(editor).idPrefixMethod == PrefixMethod.UsePrefix, this.getFileSettings(editor).randomIDLength, this.getFileSettings(editor).sequentialStartNumber, this.getFileSettings(editor).debug, this.tabSize);
                 editor.replaceSelection(
                     `${lines}`
                 );
@@ -247,7 +247,9 @@ class ProjectTasksSettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Task Behavior')
-            .setHeading();
+            .setHeading()
+            .setDesc('See README for detailed examples')
+            .descEl.style.setProperty("font-style", "italic");
 
         new Setting(containerEl)
             .setName('Root task behavior')
@@ -287,6 +289,16 @@ class ProjectTasksSettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
             });
+        
+        new Setting(containerEl)
+            .setName('Add all nested dependencies')
+            .setDesc('When enabled, tasks include all their nested subtask IDs in dependsOn. When disabled, only immediate blockers are included.')
+            .addToggle(text => text
+                .setValue(this.plugin.settings.explicitDependencies)
+                .onChange(async (value) => {
+                    this.plugin.settings.explicitDependencies = value;
+                    await this.plugin.saveSettings();
+                }));
 
         new Setting(containerEl)
             .setName('Advanced')

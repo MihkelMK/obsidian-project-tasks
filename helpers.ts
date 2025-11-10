@@ -32,6 +32,7 @@ export interface ProjectTasksSettings {
     rootTaskBehavior: Nestingbehavior;
     nestedTaskBehavior: Nestingbehavior;
     dependencyDirection: DependencyDirection;
+    explicitDependencies: boolean;
     overrideSettings: boolean;
     debug: boolean;
 }
@@ -48,6 +49,7 @@ export const DEFAULT_SETTINGS: ProjectTasksSettings = {
     rootTaskBehavior: Nestingbehavior.SequentialExecution,
     nestedTaskBehavior: Nestingbehavior.ParallelExecution,
     dependencyDirection: DependencyDirection.TopDown,
+    explicitDependencies: true,
     overrideSettings: true,
     debug: false
 }
@@ -250,7 +252,7 @@ export default class Helper {
         return descendants;
     }
 
-    static addTaskIDs(sel: string, prefix: string, automatic_tags: string[], root_parallel: boolean, nested_parallel: boolean, bottom_up: boolean, use_prefix: boolean,
+    static addTaskIDs(sel: string, prefix: string, automatic_tags: string[], root_parallel: boolean, nested_parallel: boolean, bottom_up: boolean, explicit_dependencies: boolean, use_prefix: boolean,
                       random_id_length: number, sequential_start: number, debug: boolean = false, tabSize: number = 4) {
         // ToDo refactor addTaskIDs to use the settings
         // Clear all the existing block and project ID's
@@ -483,6 +485,7 @@ export default class Helper {
                 settings.rootTaskBehavior == Nestingbehavior.ParallelExecution,
                 settings.nestedTaskBehavior == Nestingbehavior.ParallelExecution,
                 settings.dependencyDirection == DependencyDirection.BottomUp,
+                settings.explicitDependencies,
                 settings.idPrefixMethod == PrefixMethod.UsePrefix,
                 settings.randomIDLength, settings.sequentialStartNumber, settings.debug, tabSize)
         } else {
