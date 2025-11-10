@@ -103,6 +103,10 @@ You can control how tasks depend on each other at different hierarchy levels:
 - **Parallel Execution** (default): Sibling tasks at the same nesting level all depend on their parent task and can execute in parallel
 - **Sequential Execution**: Each child task depends on the previous sibling task
 
+**Dependency Direction**: Controls the direction of dependencies between parent and child tasks.
+- **Top-Down** (default): Children depend on parents - child tasks wait for their parent task to complete before they can start
+- **Bottom-Up**: Parents depend on children - parent tasks wait for all their child tasks to complete before they can be marked as done
+
 These settings can be configured in the plugin settings or overridden per-file using front matter.
 
 ### Clear Task ID's
@@ -207,5 +211,6 @@ It is important to use the internal name **and type** of the settings. These are
 | Clear All Tags          |clearAllTags| **Boolean**| Whether to clear all tags, or just the "automatic" tags, from tasks when clearing the ID's |
 | Root Task Behavior      |rootTaskBehavior| **Number**| 1=Root tasks run in parallel, 2=Root tasks run sequentially                                |
 | Nested Task Behavior    |nestedTaskBehavior| **Number**| 1=Nested tasks run in parallel, 2=Nested tasks run sequentially                            |
+| Dependency Direction    |dependencyDirection| **Number**| 1=Top-down (children wait for parents), 2=Bottom-up (parents wait for children)            |
 
 
