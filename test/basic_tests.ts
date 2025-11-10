@@ -802,6 +802,143 @@ describe('testing the adding of block ids to some tasks', () => {
         )
   })
 
+  // Cross-root dependency tests (root sequential + bottom-up)
+  test('cross-root: explicit, root sequential, nested parallel, bottom-up', () => {
+    expect(H.addTaskIDs('- [ ] Parent1\n' +
+        '\t- [ ] Child1.1\n' +
+        '\t\t- [ ] GrandChild1.1.1\n' +
+        '\t\t- [ ] GrandChild1.1.2\n' +
+        '\t- [ ] Child1.2\n' +
+        '- [ ] Parent2\n' +
+        '\t- [ ] Child2.1\n' +
+        '\t\t- [ ] GrandChild2.1.1\n' +
+        '\t- [ ] Child2.2\n' +
+        '\t- [ ] Child2.3\n' +
+        '\t\t- [ ] GrandChild2.3.1\n' +
+        '- [ ] Parent3\n' +
+        '\t- [ ] Child3.1\n' +
+        '\t\t- [ ] GrandChild3.1.1\n' +
+        '\t- [ ] Child3.2', 'TT', [], false, true, true, true, false, 3, 0))
+        .toBe('- [ ] Parent1 🆔 TT0 ⛔ TT1,TT2,TT3,TT4\n' +
+            '\t- [ ] Child1.1 🆔 TT1 ⛔ TT2,TT3\n' +
+            '\t\t- [ ] GrandChild1.1.1 🆔 TT2\n' +
+            '\t\t- [ ] GrandChild1.1.2 🆔 TT3\n' +
+            '\t- [ ] Child1.2 🆔 TT4\n' +
+            '- [ ] Parent2 🆔 TT5 ⛔ TT6,TT7,TT8,TT9,TT10,TT0\n' +
+            '\t- [ ] Child2.1 🆔 TT6 ⛔ TT7\n' +
+            '\t\t- [ ] GrandChild2.1.1 🆔 TT7 ⛔ TT0\n' +
+            '\t- [ ] Child2.2 🆔 TT8 ⛔ TT0\n' +
+            '\t- [ ] Child2.3 🆔 TT9 ⛔ TT10\n' +
+            '\t\t- [ ] GrandChild2.3.1 🆔 TT10 ⛔ TT0\n' +
+            '- [ ] Parent3 🆔 TT11 ⛔ TT12,TT13,TT14,TT5\n' +
+            '\t- [ ] Child3.1 🆔 TT12 ⛔ TT13\n' +
+            '\t\t- [ ] GrandChild3.1.1 🆔 TT13 ⛔ TT5\n' +
+            '\t- [ ] Child3.2 🆔 TT14 ⛔ TT5'
+        )
+  })
+
+  test('cross-root: implicit, root sequential, nested parallel, bottom-up', () => {
+    expect(H.addTaskIDs('- [ ] Parent1\n' +
+        '\t- [ ] Child1.1\n' +
+        '\t\t- [ ] GrandChild1.1.1\n' +
+        '\t\t- [ ] GrandChild1.1.2\n' +
+        '\t- [ ] Child1.2\n' +
+        '- [ ] Parent2\n' +
+        '\t- [ ] Child2.1\n' +
+        '\t\t- [ ] GrandChild2.1.1\n' +
+        '\t- [ ] Child2.2\n' +
+        '\t- [ ] Child2.3\n' +
+        '\t\t- [ ] GrandChild2.3.1\n' +
+        '- [ ] Parent3\n' +
+        '\t- [ ] Child3.1\n' +
+        '\t\t- [ ] GrandChild3.1.1\n' +
+        '\t- [ ] Child3.2', 'TT', [], false, true, true, false, false, 3, 0))
+        .toBe('- [ ] Parent1 🆔 TT0 ⛔ TT1,TT4\n' +
+            '\t- [ ] Child1.1 🆔 TT1 ⛔ TT2,TT3\n' +
+            '\t\t- [ ] GrandChild1.1.1 🆔 TT2\n' +
+            '\t\t- [ ] GrandChild1.1.2 🆔 TT3\n' +
+            '\t- [ ] Child1.2 🆔 TT4\n' +
+            '- [ ] Parent2 🆔 TT5 ⛔ TT6,TT8,TT9\n' +
+            '\t- [ ] Child2.1 🆔 TT6 ⛔ TT7\n' +
+            '\t\t- [ ] GrandChild2.1.1 🆔 TT7 ⛔ TT0\n' +
+            '\t- [ ] Child2.2 🆔 TT8 ⛔ TT0\n' +
+            '\t- [ ] Child2.3 🆔 TT9 ⛔ TT10\n' +
+            '\t\t- [ ] GrandChild2.3.1 🆔 TT10 ⛔ TT0\n' +
+            '- [ ] Parent3 🆔 TT11 ⛔ TT12,TT14\n' +
+            '\t- [ ] Child3.1 🆔 TT12 ⛔ TT13\n' +
+            '\t\t- [ ] GrandChild3.1.1 🆔 TT13 ⛔ TT5\n' +
+            '\t- [ ] Child3.2 🆔 TT14 ⛔ TT5'
+        )
+  })
+
+  test('cross-root: implicit, root sequential, nested sequential, bottom-up', () => {
+    expect(H.addTaskIDs('- [ ] Parent1\n' +
+        '\t- [ ] Child1.1\n' +
+        '\t\t- [ ] GrandChild1.1.1\n' +
+        '\t\t- [ ] GrandChild1.1.2\n' +
+        '\t- [ ] Child1.2\n' +
+        '- [ ] Parent2\n' +
+        '\t- [ ] Child2.1\n' +
+        '\t\t- [ ] GrandChild2.1.1\n' +
+        '\t- [ ] Child2.2\n' +
+        '\t- [ ] Child2.3\n' +
+        '\t\t- [ ] GrandChild2.3.1\n' +
+        '- [ ] Parent3\n' +
+        '\t- [ ] Child3.1\n' +
+        '\t\t- [ ] GrandChild3.1.1\n' +
+        '\t- [ ] Child3.2', 'TT', [], false, false, true, false, false, 3, 0))
+        .toBe('- [ ] Parent1 🆔 TT0 ⛔ TT4\n' +
+            '\t- [ ] Child1.1 🆔 TT1 ⛔ TT3\n' +
+            '\t\t- [ ] GrandChild1.1.1 🆔 TT2\n' +
+            '\t\t- [ ] GrandChild1.1.2 🆔 TT3 ⛔ TT2\n' +
+            '\t- [ ] Child1.2 🆔 TT4 ⛔ TT1\n' +
+            '- [ ] Parent2 🆔 TT5 ⛔ TT9\n' +
+            '\t- [ ] Child2.1 🆔 TT6 ⛔ TT7\n' +
+            '\t\t- [ ] GrandChild2.1.1 🆔 TT7 ⛔ TT0\n' +
+            '\t- [ ] Child2.2 🆔 TT8 ⛔ TT6\n' +
+            '\t- [ ] Child2.3 🆔 TT9 ⛔ TT10\n' +
+            '\t\t- [ ] GrandChild2.3.1 🆔 TT10 ⛔ TT8\n' +
+            '- [ ] Parent3 🆔 TT11 ⛔ TT14\n' +
+            '\t- [ ] Child3.1 🆔 TT12 ⛔ TT13\n' +
+            '\t\t- [ ] GrandChild3.1.1 🆔 TT13 ⛔ TT5\n' +
+            '\t- [ ] Child3.2 🆔 TT14 ⛔ TT12'
+        )
+  })
+
+  test('cross-root: explicit, root parallel, nested parallel, bottom-up (no cross-root)', () => {
+    expect(H.addTaskIDs('- [ ] Parent1\n' +
+        '\t- [ ] Child1.1\n' +
+        '\t\t- [ ] GrandChild1.1.1\n' +
+        '\t\t- [ ] GrandChild1.1.2\n' +
+        '\t- [ ] Child1.2\n' +
+        '- [ ] Parent2\n' +
+        '\t- [ ] Child2.1\n' +
+        '\t\t- [ ] GrandChild2.1.1\n' +
+        '\t- [ ] Child2.2\n' +
+        '\t- [ ] Child2.3\n' +
+        '\t\t- [ ] GrandChild2.3.1\n' +
+        '- [ ] Parent3\n' +
+        '\t- [ ] Child3.1\n' +
+        '\t\t- [ ] GrandChild3.1.1\n' +
+        '\t- [ ] Child3.2', 'TT', [], true, true, true, true, false, 3, 0))
+        .toBe('- [ ] Parent1 🆔 TT0 ⛔ TT1,TT2,TT3,TT4\n' +
+            '\t- [ ] Child1.1 🆔 TT1 ⛔ TT2,TT3\n' +
+            '\t\t- [ ] GrandChild1.1.1 🆔 TT2\n' +
+            '\t\t- [ ] GrandChild1.1.2 🆔 TT3\n' +
+            '\t- [ ] Child1.2 🆔 TT4\n' +
+            '- [ ] Parent2 🆔 TT5 ⛔ TT6,TT7,TT8,TT9,TT10\n' +
+            '\t- [ ] Child2.1 🆔 TT6 ⛔ TT7\n' +
+            '\t\t- [ ] GrandChild2.1.1 🆔 TT7\n' +
+            '\t- [ ] Child2.2 🆔 TT8\n' +
+            '\t- [ ] Child2.3 🆔 TT9 ⛔ TT10\n' +
+            '\t\t- [ ] GrandChild2.3.1 🆔 TT10\n' +
+            '- [ ] Parent3 🆔 TT11 ⛔ TT12,TT13,TT14\n' +
+            '\t- [ ] Child3.1 🆔 TT12 ⛔ TT13\n' +
+            '\t\t- [ ] GrandChild3.1.1 🆔 TT13\n' +
+            '\t- [ ] Child3.2 🆔 TT14'
+        )
+  })
+
 })
 
 describe('testing getting all the blocks in a file', () =>  {
