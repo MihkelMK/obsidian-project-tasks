@@ -312,6 +312,18 @@ export default class Helper {
             }
         }
 
+        // For bottom-up: calculate which children each task should block on
+        let child_blockers = new Map<string, string>();  // task_id -> comma-separated child IDs
+        if (bottom_up) {
+            for (const task of tasks) {
+                if (task.children.length > 0) {
+                    // Get all descendant IDs for this task
+                    let descendant_ids = this.getAllDescendants(task);
+                    child_blockers.set(task.id, descendant_ids.join(','));
+                }
+            }
+        }
+
         // PASS 2: Generate output with blockers
         let lines = "";
         let first = true;
@@ -338,10 +350,11 @@ export default class Helper {
                     // Add a new level of nesting
                     current_nesting += 1;
                     is_parallel = nested_parallel;
-                    // Initialize new level based on mode:
-                    // - In parallel mode: empty string, siblings will be accumulated
-                    // - In sequential mode: use previous task as blocker for first child
-                    if (nested_parallel) {
+                    // Initialize new level based on mode and dependency direction:
+                    // - In bottom-up mode: always start with empty string (no parent dependency)
+                    // - In top-down parallel mode: empty string, siblings will be accumulated
+                    // - In top-down sequential mode: use previous task as blocker for first child
+                    if (bottom_up || nested_parallel) {
                         nesting_ids.push(``);
                     } else {
                         nesting_ids.push(nesting_ids[nesting_ids.length - 1]);
@@ -354,21 +367,24 @@ export default class Helper {
                         // Determine the new mode after decrement
                         let new_is_parallel = (current_nesting > 0) ? nested_parallel : root_parallel;
 
-                        // Merge nested level into parent level
-                        if (current_nesting === 0 && root_parallel) {
-                            // Exiting back to root parallel mode - clear blockers
-                            nesting_ids[0] = "";
-                        } else if (nested && is_parallel) {
-                            // Was in parallel mode: accumulate nested IDs at parent level
-                            let parent_value = nesting_ids[nesting_ids.length - 1];
-                            if (parent_value && parent_value !== "0:ERROR!") {
-                                nesting_ids[nesting_ids.length - 1] += `,${nested}`;
-                            } else {
+                        // Merge nested level into parent level (only for top-down mode)
+                        // In bottom-up mode, each level is independent, so no merging needed
+                        if (!bottom_up) {
+                            if (current_nesting === 0 && root_parallel) {
+                                // Exiting back to root parallel mode - clear blockers
+                                nesting_ids[0] = "";
+                            } else if (nested && is_parallel) {
+                                // Was in parallel mode: accumulate nested IDs at parent level
+                                let parent_value = nesting_ids[nesting_ids.length - 1];
+                                if (parent_value && parent_value !== "0:ERROR!") {
+                                    nesting_ids[nesting_ids.length - 1] += `,${nested}`;
+                                } else {
+                                    nesting_ids[nesting_ids.length - 1] = nested;
+                                }
+                            } else if (nested && !is_parallel) {
+                                // Was in sequential mode: last nested task is the blocker
                                 nesting_ids[nesting_ids.length - 1] = nested;
                             }
-                        } else if (nested && !is_parallel) {
-                            // Was in sequential mode: last nested task is the blocker
-                            nesting_ids[nesting_ids.length - 1] = nested;
                         }
                         is_parallel = new_is_parallel;
                     }
@@ -379,16 +395,43 @@ export default class Helper {
                 // Add a space at the end if needed
                 if (cleaned_line != "") cleaned_line += " ";
                 this_line = `${match.task_prefix}${cleaned_line}🆔 ${this_id}`;
-                if (task.index > 0) {
-                    // Add the blocks after the very first task
-                    if (is_parallel && current_nesting > 0) {
-                        // Parallel mode: block on parent level
-                        this_line += ` ⛔ ${nesting_ids[current_nesting - 1]}`;
-                    } else if (!is_parallel) {
-                        // Sequential mode: block on previous task
-                        this_line += ` ⛔ ${nesting_ids[nesting_ids.length - 1]}`;
+
+                // Add blockers based on dependency direction
+                let blockers: string[] = [];
+
+                if (bottom_up) {
+                    // Bottom-up: parents depend on children
+                    // Add child blockers first
+                    let child_blocker = child_blockers.get(this_id);
+                    if (child_blocker) {
+                        blockers.push(child_blocker);
                     }
-                    // else: parallel mode at root level (current_nesting=0) - no blocker
+                    // Add sibling blockers (sequential mode only)
+                    // Check if there's a previous sibling at the current nesting level
+                    if (!is_parallel && nesting_ids[current_nesting] !== undefined && nesting_ids[current_nesting] !== "") {
+                        let sibling_blocker = nesting_ids[current_nesting];
+                        if (sibling_blocker !== "0:ERROR!") {
+                            blockers.push(sibling_blocker);
+                        }
+                    }
+                } else {
+                    // Top-down: children depend on parents
+                    if (task.index > 0) {
+                        // Add the blocks after the very first task
+                        if (is_parallel && current_nesting > 0) {
+                            // Parallel mode: block on parent level
+                            blockers.push(nesting_ids[current_nesting - 1]);
+                        } else if (!is_parallel) {
+                            // Sequential mode: block on previous task
+                            blockers.push(nesting_ids[nesting_ids.length - 1]);
+                        }
+                        // else: parallel mode at root level (current_nesting=0) - no blocker
+                    }
+                }
+
+                // Apply blockers to the line
+                if (blockers.length > 0) {
+                    this_line += ` ⛔ ${blockers.join(',')}`;
                 }
 
                 // Add an automatic tag if we need it
