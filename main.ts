@@ -1,5 +1,5 @@
 import {App, Editor, MarkdownFileInfo, Plugin, PluginSettingTab, Setting} from 'obsidian';
-import Helper, {DEFAULT_SETTINGS, Nestingbehavior, PrefixMethod, ProjectTasksSettings} from "./helpers";
+import Helper, {DEFAULT_SETTINGS, DependencyDirection, Nestingbehavior, PrefixMethod, ProjectTasksSettings} from "./helpers";
 import {editor} from "./test/basic_tests";
 
 
@@ -20,7 +20,7 @@ export default class ProjectTasks extends Plugin {
             name: "Set project ids on selection",
             editorCallback: (editor, view) => {
                 let sel = editor.getSelection();
-                let lines = Helper.addTaskIDs(sel, Helper.getPrefix(editor, this.getFilename(editor, view), this.getFileSettings(editor)), this.getFileSettings(editor).automaticTagNames, this.getFileSettings(editor).rootTaskBehavior == Nestingbehavior.ParallelExecution, this.getFileSettings(editor).nestedTaskBehavior == Nestingbehavior.ParallelExecution, this.getFileSettings(editor).idPrefixMethod == PrefixMethod.UsePrefix, this.getFileSettings(editor).randomIDLength, this.getFileSettings(editor).sequentialStartNumber, this.getFileSettings(editor).debug, this.tabSize);
+                let lines = Helper.addTaskIDs(sel, Helper.getPrefix(editor, this.getFilename(editor, view), this.getFileSettings(editor)), this.getFileSettings(editor).automaticTagNames, this.getFileSettings(editor).rootTaskBehavior == Nestingbehavior.ParallelExecution, this.getFileSettings(editor).nestedTaskBehavior == Nestingbehavior.ParallelExecution, this.getFileSettings(editor).dependencyDirection == DependencyDirection.BottomUp, this.getFileSettings(editor).idPrefixMethod == PrefixMethod.UsePrefix, this.getFileSettings(editor).randomIDLength, this.getFileSettings(editor).sequentialStartNumber, this.getFileSettings(editor).debug, this.tabSize);
                 editor.replaceSelection(
                     `${lines}`
                 );
@@ -271,6 +271,19 @@ class ProjectTasksSettingsTab extends PluginSettingTab {
                     .setValue(this.plugin.settings.nestedTaskBehavior.toString())
                     .onChange(async (value) => {
                         this.plugin.settings.nestedTaskBehavior = parseInt(value) as Nestingbehavior;
+                        await this.plugin.saveSettings();
+                    })
+            });
+
+        new Setting(containerEl)
+            .setName('Dependency direction')
+            .setDesc('Controls whether children depend on parents (top-down) or parents depend on children (bottom-up rollup)')
+            .addDropdown(dropDown => {
+                dropDown.addOption('1', 'Top-Down (children wait for parents)');
+                dropDown.addOption('2', 'Bottom-Up (parents wait for children)')
+                    .setValue(this.plugin.settings.dependencyDirection.toString())
+                    .onChange(async (value) => {
+                        this.plugin.settings.dependencyDirection = parseInt(value) as DependencyDirection;
                         await this.plugin.saveSettings();
                     })
             });

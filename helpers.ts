@@ -15,6 +15,11 @@ export enum Nestingbehavior {
     SequentialExecution = 2,
 }
 
+export enum DependencyDirection {
+    TopDown = 1,  // Children depend on parents (standard)
+    BottomUp = 2, // Parents depend on children (rollup/milestone)
+}
+
 export interface ProjectTasksSettings {
     idPrefixMethod: PrefixMethod;
     projectPrefix: string;
@@ -26,6 +31,7 @@ export interface ProjectTasksSettings {
     clearAllTags: boolean;
     rootTaskBehavior: Nestingbehavior;
     nestedTaskBehavior: Nestingbehavior;
+    dependencyDirection: DependencyDirection;
     overrideSettings: boolean;
     debug: boolean;
 }
@@ -41,6 +47,7 @@ export const DEFAULT_SETTINGS: ProjectTasksSettings = {
     clearAllTags: false,
     rootTaskBehavior: Nestingbehavior.SequentialExecution,
     nestedTaskBehavior: Nestingbehavior.ParallelExecution,
+    dependencyDirection: DependencyDirection.TopDown,
     overrideSettings: true,
     debug: false
 }
@@ -243,7 +250,7 @@ export default class Helper {
         return descendants;
     }
 
-    static addTaskIDs(sel: string, prefix: string, automatic_tags: string[], root_parallel: boolean, nested_parallel: boolean, use_prefix: boolean,
+    static addTaskIDs(sel: string, prefix: string, automatic_tags: string[], root_parallel: boolean, nested_parallel: boolean, bottom_up: boolean, use_prefix: boolean,
                       random_id_length: number, sequential_start: number, debug: boolean = false, tabSize: number = 4) {
         // ToDo refactor addTaskIDs to use the settings
         // Clear all the existing block and project ID's
@@ -432,6 +439,7 @@ export default class Helper {
             lines = Helper.addTaskIDs(blockContent, prefix, settings.automaticTagNames,
                 settings.rootTaskBehavior == Nestingbehavior.ParallelExecution,
                 settings.nestedTaskBehavior == Nestingbehavior.ParallelExecution,
+                settings.dependencyDirection == DependencyDirection.BottomUp,
                 settings.idPrefixMethod == PrefixMethod.UsePrefix,
                 settings.randomIDLength, settings.sequentialStartNumber, settings.debug, tabSize)
         } else {
