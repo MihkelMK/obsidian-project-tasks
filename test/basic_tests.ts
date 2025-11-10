@@ -395,24 +395,24 @@ describe('test getting the section name', () => {
 
 describe('testing the adding of block ids to some tasks', () => {
   test('empty file should be unchanged', () => {
-    expect(H.addTaskIDs('', 'Proj', ['tag'], false, true, false, false, 3, 0))
+    expect(H.addTaskIDs('', 'Proj', ['tag'], false, true, false, true, false, 3, 0))
         .toBe('')
   })
 
   test('file with no tasks should be unchanged', () => {
-    expect(H.addTaskIDs('this is a file\nwith no tasks\nso there', 'Proj', ['tag'], false, true, false, false, 3, 0))
+    expect(H.addTaskIDs('this is a file\nwith no tasks\nso there', 'Proj', ['tag'], false, true, false, true, false, 3, 0))
         .toBe('this is a file\nwith no tasks\nso there')
   })
 
   test('adding block ids to a line with them on already', () => {
-    expect(H.addTaskIDs('- [ ] 🆔 O7 ⛔ O6 #tag', 'O', ['tag'], false, true, false, false, 3, 0))
+    expect(H.addTaskIDs('- [ ] 🆔 O7 ⛔ O6 #tag', 'O', ['tag'], false, true, false, true, false, 3, 0))
         .toBe('- [ ] 🆔 O0 #tag')
   })
 
   test('running add ids command twice should give same result as running once', () => {
     const input = '- [ ] one\n- [ ] two\n- [ ] three';
-    const firstRun = H.addTaskIDs(input, 'Proj', [], false, false, false, false, 3, 0);
-    const secondRun = H.addTaskIDs(firstRun, 'Proj', [], false, false, false, false, 3, 0);
+    const firstRun = H.addTaskIDs(input, 'Proj', [], false, false, false, true, false, 3, 0);
+    const secondRun = H.addTaskIDs(firstRun, 'Proj', [], false, false, false, true, false, 3, 0);
     expect(secondRun).toBe(firstRun);
   })
 
@@ -422,7 +422,7 @@ describe('testing the adding of block ids to some tasks', () => {
         '- [ ] one\n' +
         '- [ ] two\n' +
         '\n' +
-        '- [ ] three\n', 'Proj', [], false, true, false, false, 3, 0))
+        '- [ ] three\n', 'Proj', [], false, true, false, true, false, 3, 0))
         .toBe('\n\n- [ ] one 🆔 Proj0\n- [ ] two 🆔 Proj1 ⛔ Proj0\n\n- [ ] three 🆔 Proj2 ⛔ Proj1\n')
   })
 
@@ -432,17 +432,17 @@ describe('testing the adding of block ids to some tasks', () => {
         '- [ ] one\n' +
         '- [ ] two\n' +
         '\n' +
-        '- [ ] three\n', 'Proj', ['tag'], false, true, false, false, 3, 0))
+        '- [ ] three\n', 'Proj', ['tag'], false, true, false, true, false, 3, 0))
         .toBe('\n\n- [ ] one 🆔 Proj0 #tag\n- [ ] two 🆔 Proj1 ⛔ Proj0 #tag\n\n- [ ] three 🆔 Proj2 ⛔ Proj1 #tag\n')
   })
 
   test('line with task and sequential start set', () => {
-    expect(H.addTaskIDs('- [ ] one', 'Proj', [], false, true, false, false, 3, 10))
+    expect(H.addTaskIDs('- [ ] one', 'Proj', [], false, true, false, true, false, 3, 10))
         .toBe('- [ ] one 🆔 Proj10')
   })
 
   test('two lines with task and prefix', () => {
-    let result = H.addTaskIDs('- [ ] one\n- [ ] two', 'Proj', [], false, true, false, true, 3, 10);
+    let result = H.addTaskIDs('- [ ] one\n- [ ] two', 'Proj', [], false, true, false, true, true, 3, 10);
     let match = /- \[ ] one 🆔 Proj(\d\d\d)\n- \[ ] two 🆔 Proj\d\d\d ⛔ Proj\1/m
     expect(match.test(result)).toBeTruthy()
   })
@@ -451,7 +451,7 @@ describe('testing the adding of block ids to some tasks', () => {
     expect(H.addTaskIDs('- [ ] one\n' +
         '\t- [ ] two\n' +
         '\t- [ ] three\n' +
-        '- [ ] four\n', 'F', ['tag'], false, true, false, false, 3, 0))
+        '- [ ] four\n', 'F', ['tag'], false, true, false, true, false, 3, 0))
         .toBe('- [ ] one 🆔 F0 #tag\n' +
             '\t- [ ] two 🆔 F1 ⛔ F0 #tag\n' +
             '\t- [ ] three 🆔 F2 ⛔ F0 #tag\n' +
@@ -468,7 +468,7 @@ describe('testing the adding of block ids to some tasks', () => {
         '\t\t- [ ] five\n' +
         '\t- [ ] six\n' +
         '- [ ] seven\n' +
-        '- [ ] eight', 'F', ['tag'], false, true, false, false, 3, 0))
+        '- [ ] eight', 'F', ['tag'], false, true, false, true, false, 3, 0))
         .toBe('- [ ] one 🆔 F0 #tag\n' +
             '\t- [ ] two 🆔 F1 ⛔ F0 #tag\n' +
             '\t- [ ] three 🆔 F2 ⛔ F0 #tag\n' +
@@ -484,7 +484,7 @@ describe('testing the adding of block ids to some tasks', () => {
     expect(H.addTaskIDs('- [ ] one\n' +
         '\t- [ ] two\n' +
         '\t- [ ] three\n' +
-        '- [ ] four\n', 'F', ['tag'], false, false, false, false, 3, 0))
+        '- [ ] four\n', 'F', ['tag'], false, false, false, true, false, 3, 0))
         .toBe('- [ ] one 🆔 F0 #tag\n' +
             '\t- [ ] two 🆔 F1 ⛔ F0 #tag\n' +
             '\t- [ ] three 🆔 F2 ⛔ F1 #tag\n' +
@@ -501,7 +501,7 @@ describe('testing the adding of block ids to some tasks', () => {
         '\t\t- [ ] five\n' +
         '\t- [ ] six\n' +
         '- [ ] seven\n' +
-        '- [ ] eight', 'F', ['tag'], false, false, false, false, 3, 0))
+        '- [ ] eight', 'F', ['tag'], false, false, false, true, false, 3, 0))
         .toBe('- [ ] one 🆔 F0 #tag\n' +
             '\t- [ ] two 🆔 F1 ⛔ F0 #tag\n' +
             '\t- [ ] three 🆔 F2 ⛔ F1 #tag\n' +
@@ -518,7 +518,7 @@ describe('testing the adding of block ids to some tasks', () => {
         '- [ ] Task B\n' +
         '\t- [ ] Task B1\n' +
         '\t- [ ] Task B2\n' +
-        '- [ ] Task C', 'A', [], true, true, false, false, 3, 0))
+        '- [ ] Task C', 'A', [], true, true, false, true, false, 3, 0))
         .toBe('- [ ] Task A 🆔 A0\n' +
             '- [ ] Task B 🆔 A1\n' +
             '\t- [ ] Task B1 🆔 A2 ⛔ A0,A1\n' +
@@ -532,7 +532,7 @@ describe('testing the adding of block ids to some tasks', () => {
         '- [ ] Task B\n' +
         '\t- [ ] Task B1\n' +
         '\t- [ ] Task B2\n' +
-        '- [ ] Task C', 'A', [], true, false, false, false, 3, 0))
+        '- [ ] Task C', 'A', [], true, false, false, true, false, 3, 0))
         .toBe('- [ ] Task A 🆔 A0\n' +
             '- [ ] Task B 🆔 A1\n' +
             '\t- [ ] Task B1 🆔 A2 ⛔ A0,A1\n' +
@@ -547,7 +547,7 @@ describe('testing the adding of block ids to some tasks', () => {
         '\t\t- [ ] GrandChild1.1.1\n' +
         '\t\t- [ ] GrandChild1.1.2\n' +
         '\t- [ ] Child1.2\n' +
-        '- [ ] Root2', 'A', [], true, true, false, false, 3, 0))
+        '- [ ] Root2', 'A', [], true, true, false, true, false, 3, 0))
         .toBe('- [ ] Root1 🆔 A0\n' +
             '\t- [ ] Child1.1 🆔 A1 ⛔ A0\n' +
             '\t\t- [ ] GrandChild1.1.1 🆔 A2 ⛔ A1\n' +
@@ -563,7 +563,7 @@ describe('testing the adding of block ids to some tasks', () => {
         '\t\t- [ ] GrandChild1.1.1\n' +
         '\t\t- [ ] GrandChild1.1.2\n' +
         '\t- [ ] Child1.2\n' +
-        '- [ ] Root2', 'A', [], false, false, false, false, 3, 0))
+        '- [ ] Root2', 'A', [], false, false, false, true, false, 3, 0))
         .toBe('- [ ] Root1 🆔 A0\n' +
             '\t- [ ] Child1.1 🆔 A1 ⛔ A0\n' +
             '\t\t- [ ] GrandChild1.1.1 🆔 A2 ⛔ A1\n' +
@@ -574,29 +574,29 @@ describe('testing the adding of block ids to some tasks', () => {
   })
 
   test('adding block ids should preserve existing indentation', () => {
-    expect(H.addTaskIDs('- [ ] one\n\ttwo\n\t\tthree\n- [ ] four', 'F', [], false, false, false, false, 3, 0)).toBe(
+    expect(H.addTaskIDs('- [ ] one\n\ttwo\n\t\tthree\n- [ ] four', 'F', [], false, false, false, true, false, 3, 0)).toBe(
            '- [ ] one 🆔 F0\n\ttwo\n\t\tthree\n- [ ] four 🆔 F1 ⛔ F0'
     )
   })
 
   test('adding block ids should preserve space indentation', () => {
-    expect(H.addTaskIDs('- [ ] one\n    - [ ] two\n        - [ ] three', 'F', [], false, false, false, false, 3, 0, false, 4)).toBe(
+    expect(H.addTaskIDs('- [ ] one\n    - [ ] two\n        - [ ] three', 'F', [], false, false, false, true, false, 3, 0, false, 4)).toBe(
            '- [ ] one 🆔 F0\n    - [ ] two 🆔 F1 ⛔ F0\n        - [ ] three 🆔 F2 ⛔ F1'
     )
   })
 
   test('adding block ids should retain existing tags', () => {
-    expect(H.addTaskIDs('- [ ] #one', 'F', [], false, false, false, false, 1, 0))
+    expect(H.addTaskIDs('- [ ] #one', 'F', [], false, false, false, true, false, 1, 0))
         .toBe('- [ ] #one 🆔 F0')
   })
 
   test('adding multiple tags to a task line', () => {
-    expect(H.addTaskIDs('- [ ] this', 'F', ['one', 'two'], false, false, false, false, 2, 0))
+    expect(H.addTaskIDs('- [ ] this', 'F', ['one', 'two'], false, false, false, true, false, 2, 0))
         .toBe('- [ ] this 🆔 F0 #one #two')
   })
 
   test('adding multiple tags to a task line should not duplicate', () => {
-    expect(H.addTaskIDs('- [ ] #one this', 'F', ['one', 'two'], false, false, false, false, 2, 0))
+    expect(H.addTaskIDs('- [ ] #one this', 'F', ['one', 'two'], false, false, false, true, false, 2, 0))
         .toBe('- [ ] this 🆔 F0 #one #two')
   })
 
@@ -605,7 +605,7 @@ describe('testing the adding of block ids to some tasks', () => {
         '- [ ] Task B\n' +
         '\t- [ ] Task B1\n' +
         '\t- [ ] Task B2\n' +
-        '- [ ] Task C', 'A', [], true, true, true, false, 3, 0))
+        '- [ ] Task C', 'A', [], true, true, true, true, false, 3, 0))
         .toBe('- [ ] Task A 🆔 A0\n' +
             '- [ ] Task B 🆔 A1 ⛔ A2,A3\n' +
             '\t- [ ] Task B1 🆔 A2\n' +
@@ -619,7 +619,7 @@ describe('testing the adding of block ids to some tasks', () => {
         '- [ ] Task B\n' +
         '\t- [ ] Task B1\n' +
         '\t- [ ] Task B2\n' +
-        '- [ ] Task C', 'A', [], false, true, true, false, 3, 0))
+        '- [ ] Task C', 'A', [], false, true, true, true, false, 3, 0))
         .toBe('- [ ] Task A 🆔 A0\n' +
             '- [ ] Task B 🆔 A1 ⛔ A2,A3,A0\n' +
             '\t- [ ] Task B1 🆔 A2\n' +
@@ -633,7 +633,7 @@ describe('testing the adding of block ids to some tasks', () => {
         '- [ ] Task B\n' +
         '\t- [ ] Task B1\n' +
         '\t- [ ] Task B2\n' +
-        '- [ ] Task C', 'A', [], true, false, true, false, 3, 0))
+        '- [ ] Task C', 'A', [], true, false, true, true, false, 3, 0))
         .toBe('- [ ] Task A 🆔 A0\n' +
             '- [ ] Task B 🆔 A1 ⛔ A2,A3\n' +
             '\t- [ ] Task B1 🆔 A2\n' +
@@ -647,7 +647,7 @@ describe('testing the adding of block ids to some tasks', () => {
         '- [ ] Task B\n' +
         '\t- [ ] Task B1\n' +
         '\t- [ ] Task B2\n' +
-        '- [ ] Task C', 'A', [], false, false, true, false, 3, 0))
+        '- [ ] Task C', 'A', [], false, false, true, true, false, 3, 0))
         .toBe('- [ ] Task A 🆔 A0\n' +
             '- [ ] Task B 🆔 A1 ⛔ A2,A3,A0\n' +
             '\t- [ ] Task B1 🆔 A2\n' +
@@ -662,7 +662,7 @@ describe('testing the adding of block ids to some tasks', () => {
         '\t\t- [ ] GrandChild1.1.1\n' +
         '\t\t- [ ] GrandChild1.1.2\n' +
         '\t- [ ] Child1.2\n' +
-        '- [ ] Root2', 'A', [], false, false, true, false, 3, 0))
+        '- [ ] Root2', 'A', [], false, false, true, true, false, 3, 0))
         .toBe('- [ ] Root1 🆔 A0 ⛔ A1,A2,A3,A4\n' +
             '\t- [ ] Child1.1 🆔 A1 ⛔ A2,A3\n' +
             '\t\t- [ ] GrandChild1.1.1 🆔 A2\n' +
@@ -675,7 +675,7 @@ describe('testing the adding of block ids to some tasks', () => {
   test('bottom-up: single root with nested children', () => {
     expect(H.addTaskIDs('- [ ] Root\n' +
         '\t- [ ] Child1\n' +
-        '\t- [ ] Child2', 'A', [], false, true, true, false, 3, 0))
+        '\t- [ ] Child2', 'A', [], false, true, true, true, false, 3, 0))
         .toBe('- [ ] Root 🆔 A0 ⛔ A1,A2\n' +
             '\t- [ ] Child1 🆔 A1\n' +
             '\t- [ ] Child2 🆔 A2'
@@ -685,7 +685,7 @@ describe('testing the adding of block ids to some tasks', () => {
   test('bottom-up: task with no children behaves normally', () => {
     expect(H.addTaskIDs('- [ ] Task A\n' +
         '- [ ] Task B\n' +
-        '- [ ] Task C', 'A', [], false, true, true, false, 3, 0))
+        '- [ ] Task C', 'A', [], false, true, true, true, false, 3, 0))
         .toBe('- [ ] Task A 🆔 A0\n' +
             '- [ ] Task B 🆔 A1 ⛔ A0\n' +
             '- [ ] Task C 🆔 A2 ⛔ A1'
@@ -697,7 +697,7 @@ describe('testing the adding of block ids to some tasks', () => {
         '\t- [ ] Child1.1\n' +
         '\t\t- [ ] Deep1\n' +
         '- [ ] Root2\n' +
-        '\t- [ ] Child2.1', 'A', [], false, false, true, false, 3, 0))
+        '\t- [ ] Child2.1', 'A', [], false, false, true, true, false, 3, 0))
         .toBe('- [ ] Root1 🆔 A0 ⛔ A1,A2\n' +
             '\t- [ ] Child1.1 🆔 A1 ⛔ A2\n' +
             '\t\t- [ ] Deep1 🆔 A2\n' +
