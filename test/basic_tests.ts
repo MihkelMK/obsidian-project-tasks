@@ -600,6 +600,112 @@ describe('testing the adding of block ids to some tasks', () => {
         .toBe('- [ ] this 🆔 F0 #one #two')
   })
 
+  test('bottom-up: root parallel, nested parallel', () => {
+    expect(H.addTaskIDs('- [ ] Task A\n' +
+        '- [ ] Task B\n' +
+        '\t- [ ] Task B1\n' +
+        '\t- [ ] Task B2\n' +
+        '- [ ] Task C', 'A', [], true, true, true, false, 3, 0))
+        .toBe('- [ ] Task A 🆔 A0\n' +
+            '- [ ] Task B 🆔 A1 ⛔ A2,A3\n' +
+            '\t- [ ] Task B1 🆔 A2\n' +
+            '\t- [ ] Task B2 🆔 A3\n' +
+            '- [ ] Task C 🆔 A4'
+        )
+  })
+
+  test('bottom-up: root sequential, nested parallel', () => {
+    expect(H.addTaskIDs('- [ ] Task A\n' +
+        '- [ ] Task B\n' +
+        '\t- [ ] Task B1\n' +
+        '\t- [ ] Task B2\n' +
+        '- [ ] Task C', 'A', [], false, true, true, false, 3, 0))
+        .toBe('- [ ] Task A 🆔 A0\n' +
+            '- [ ] Task B 🆔 A1 ⛔ A2,A3,A0\n' +
+            '\t- [ ] Task B1 🆔 A2\n' +
+            '\t- [ ] Task B2 🆔 A3\n' +
+            '- [ ] Task C 🆔 A4 ⛔ A1'
+        )
+  })
+
+  test('bottom-up: root parallel, nested sequential', () => {
+    expect(H.addTaskIDs('- [ ] Task A\n' +
+        '- [ ] Task B\n' +
+        '\t- [ ] Task B1\n' +
+        '\t- [ ] Task B2\n' +
+        '- [ ] Task C', 'A', [], true, false, true, false, 3, 0))
+        .toBe('- [ ] Task A 🆔 A0\n' +
+            '- [ ] Task B 🆔 A1 ⛔ A2,A3\n' +
+            '\t- [ ] Task B1 🆔 A2\n' +
+            '\t- [ ] Task B2 🆔 A3 ⛔ A2\n' +
+            '- [ ] Task C 🆔 A4'
+        )
+  })
+
+  test('bottom-up: root sequential, nested sequential', () => {
+    expect(H.addTaskIDs('- [ ] Task A\n' +
+        '- [ ] Task B\n' +
+        '\t- [ ] Task B1\n' +
+        '\t- [ ] Task B2\n' +
+        '- [ ] Task C', 'A', [], false, false, true, false, 3, 0))
+        .toBe('- [ ] Task A 🆔 A0\n' +
+            '- [ ] Task B 🆔 A1 ⛔ A2,A3,A0\n' +
+            '\t- [ ] Task B1 🆔 A2\n' +
+            '\t- [ ] Task B2 🆔 A3 ⛔ A2\n' +
+            '- [ ] Task C 🆔 A4 ⛔ A1'
+        )
+  })
+
+  test('bottom-up: complex multi-level nesting', () => {
+    expect(H.addTaskIDs('- [ ] Root1\n' +
+        '\t- [ ] Child1.1\n' +
+        '\t\t- [ ] GrandChild1.1.1\n' +
+        '\t\t- [ ] GrandChild1.1.2\n' +
+        '\t- [ ] Child1.2\n' +
+        '- [ ] Root2', 'A', [], false, false, true, false, 3, 0))
+        .toBe('- [ ] Root1 🆔 A0 ⛔ A1,A2,A3,A4\n' +
+            '\t- [ ] Child1.1 🆔 A1 ⛔ A2,A3\n' +
+            '\t\t- [ ] GrandChild1.1.1 🆔 A2\n' +
+            '\t\t- [ ] GrandChild1.1.2 🆔 A3 ⛔ A2\n' +
+            '\t- [ ] Child1.2 🆔 A4 ⛔ A1\n' +
+            '- [ ] Root2 🆔 A5 ⛔ A0'
+        )
+  })
+
+  test('bottom-up: single root with nested children', () => {
+    expect(H.addTaskIDs('- [ ] Root\n' +
+        '\t- [ ] Child1\n' +
+        '\t- [ ] Child2', 'A', [], false, true, true, false, 3, 0))
+        .toBe('- [ ] Root 🆔 A0 ⛔ A1,A2\n' +
+            '\t- [ ] Child1 🆔 A1\n' +
+            '\t- [ ] Child2 🆔 A2'
+        )
+  })
+
+  test('bottom-up: task with no children behaves normally', () => {
+    expect(H.addTaskIDs('- [ ] Task A\n' +
+        '- [ ] Task B\n' +
+        '- [ ] Task C', 'A', [], false, true, true, false, 3, 0))
+        .toBe('- [ ] Task A 🆔 A0\n' +
+            '- [ ] Task B 🆔 A1 ⛔ A0\n' +
+            '- [ ] Task C 🆔 A2 ⛔ A1'
+        )
+  })
+
+  test('bottom-up: uneven nesting depths', () => {
+    expect(H.addTaskIDs('- [ ] Root1\n' +
+        '\t- [ ] Child1.1\n' +
+        '\t\t- [ ] Deep1\n' +
+        '- [ ] Root2\n' +
+        '\t- [ ] Child2.1', 'A', [], false, false, true, false, 3, 0))
+        .toBe('- [ ] Root1 🆔 A0 ⛔ A1,A2\n' +
+            '\t- [ ] Child1.1 🆔 A1 ⛔ A2\n' +
+            '\t\t- [ ] Deep1 🆔 A2\n' +
+            '- [ ] Root2 🆔 A3 ⛔ A4,A0\n' +
+            '\t- [ ] Child2.1 🆔 A4'
+        )
+  })
+
 })
 
 describe('testing getting all the blocks in a file', () =>  {
