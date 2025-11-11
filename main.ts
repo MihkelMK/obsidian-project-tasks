@@ -1,6 +1,37 @@
-import {App, Editor, MarkdownFileInfo, Plugin, PluginSettingTab, Setting} from 'obsidian';
+import {App, Editor, MarkdownFileInfo, MarkdownView, Plugin, PluginSettingTab, Setting, TextComponent, TFolder, TAbstractFile, AbstractInputSuggest} from 'obsidian';
 import Helper, {DEFAULT_SETTINGS, Nestingbehavior, PrefixMethod, ProjectTasksSettings} from "./helpers";
 import {editor} from "./test/basic_tests";
+
+// Folder suggestion component for autocomplete
+class FolderSuggest extends AbstractInputSuggest<TFolder> {
+    constructor(app: App, private inputEl: HTMLInputElement) {
+        super(app, inputEl);
+    }
+
+    getSuggestions(inputStr: string): TFolder[] {
+        const abstractFiles = this.app.vault.getAllLoadedFiles();
+        const folders: TFolder[] = [];
+        const lowerCaseInputStr = inputStr.toLowerCase();
+
+        abstractFiles.forEach((folder: TAbstractFile) => {
+            if (folder instanceof TFolder && folder.path.toLowerCase().contains(lowerCaseInputStr)) {
+                folders.push(folder);
+            }
+        });
+
+        return folders;
+    }
+
+    renderSuggestion(folder: TFolder, el: HTMLElement): void {
+        el.setText(folder.path);
+    }
+
+    selectSuggestion(folder: TFolder): void {
+        this.inputEl.value = folder.path;
+        this.inputEl.trigger("input");
+        this.close();
+    }
+}
 
 // Turn on to allow debugging in the console
 const DEBUG = false;
@@ -9,10 +40,13 @@ const DEBUG = false;
 export default class ProjectTasks extends Plugin {
     settings: ProjectTasksSettings;
 
+    private originalSaveCallback: ((checking: boolean) => boolean) | undefined;
+
     async onload() {
         if (DEBUG) console.log('Project Tasks starting');
 
         await this.loadSettings();
+        this.setupSaveHandler();
 
         this.addCommand({
             id: "set-ids",
@@ -116,8 +150,60 @@ is not blocked
         }
     }
 
-    onunload() {
+    setupSaveHandler() {
+        const saveCommandDefinition = (this.app as any).commands?.commands?.['editor:save-file'];
+        this.originalSaveCallback = saveCommandDefinition?.checkCallback;
 
+        if (typeof this.originalSaveCallback === 'function') {
+            const plugin = this;
+            saveCommandDefinition.checkCallback = (checking: boolean) => {
+                if (checking) {
+                    return plugin.originalSaveCallback!(checking);
+                }
+
+                // Run our auto-update logic before saving
+                if (plugin.settings.autoUpdateOnSave) {
+                    const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+                    if (view && view.file) {
+                        const filePath = view.file.path;
+                        if (plugin.isFileInWatchedFolder(filePath)) {
+                            const editor = view.editor;
+                            Helper.blockUpdate(editor, plugin.getFilename(editor, view), true, plugin.getFileSettings(editor));
+                        }
+                    }
+                }
+
+                // Then call original save
+                plugin.originalSaveCallback!(checking);
+                return false;
+            };
+        }
+    }
+
+    isFileInWatchedFolder(filePath: string): boolean {
+        if (this.settings.watchedFolders.length === 0) {
+            return false; // No folders specified - file can not be watched
+        }
+
+        for (const folder of this.settings.watchedFolders) {
+            // Normalize folder path
+            const normalizedFolder = folder.endsWith('/') ? folder : folder + '/';
+            if (filePath.startsWith(normalizedFolder) || filePath.startsWith(folder)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    onunload() {
+        // Restore original save callback
+        if (this.originalSaveCallback) {
+            const saveCommandDefinition = (this.app as any).commands?.commands?.['editor:save-file'];
+            if (saveCommandDefinition) {
+                saveCommandDefinition.checkCallback = this.originalSaveCallback;
+            }
+        }
     }
 
     async loadSettings() {
@@ -259,6 +345,84 @@ class ProjectTasksSettingsTab extends PluginSettingTab {
                     this.plugin.settings.overrideSettings = value;
                     await this.plugin.saveSettings();
                 }));
+
+        new Setting(containerEl)
+            .setName('Auto-update on save')
+            .setDesc('Automatically run "Set project ids on block" when saving files in watched folders')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.autoUpdateOnSave)
+                .onChange(async (value) => {
+                    this.plugin.settings.autoUpdateOnSave = value;
+                    await this.plugin.saveSettings();
+                    this.display(); // Refresh to show/hide folder settings
+                }));
+
+        // Show watched folders setting only if auto-update on save is turned on
+        if (this.plugin.settings.autoUpdateOnSave) {
+            new Setting(containerEl)
+                .setName('Watched folders')
+                .setDesc('Files in these folders will be auto-updated on save')
+                .setHeading();
+
+            // List existing watched folders
+            this.plugin.settings.watchedFolders.forEach((folder, index) => {
+                const folderEl = new Setting(containerEl)
+                    .setName(folder)
+                    .addButton(button => button
+                        .setButtonText('Remove')
+                        .setWarning()
+                        .onClick(async () => {
+                            this.plugin.settings.watchedFolders.splice(index, 1);
+                            await this.plugin.saveSettings();
+                            this.display(); // Refresh the display
+                        }));
+
+                folderEl.nameEl.style.setProperty("font-size", "var(--font-ui-small)");
+                
+                if (index > 0) {
+                    folderEl.settingEl.style.setProperty("border-top", "none");
+                    folderEl.settingEl.style.setProperty("padding-top", "0.25em");
+                };
+            });
+
+            // Add new folder input
+            let textComponent: TextComponent;
+            new Setting(containerEl)
+                .setName('Add folder')
+                .setDesc('Enter folder path (e.g., "Projects" or "Work/Tasks")')
+                .addText(text => {
+                    textComponent = text;
+                    text.setPlaceholder('Folder path...')
+                        .onChange(() => {
+                            // Validate folder exists
+                            const value = text.getValue().trim();
+                            if (value) {
+                                const folder = this.app.vault.getAbstractFileByPath(value);
+                                if (folder instanceof TFolder) {
+                                    text.inputEl.style.borderColor = 'var(--interactive-success)';
+                                } else {
+                                    text.inputEl.style.borderColor = 'var(--interactive-accent)';
+                                }
+                            } else {
+                                text.inputEl.style.borderColor = '';
+                            }
+                        });
+                    // Add folder autocomplete
+                    new FolderSuggest(this.app, text.inputEl);
+                })
+                .addButton(button => button
+                    .setButtonText('Add')
+                    .setCta()
+                    .onClick(async () => {
+                        const folderPath = textComponent.getValue().trim();
+                        if (folderPath && !this.plugin.settings.watchedFolders.includes(folderPath)) {
+                            this.plugin.settings.watchedFolders.push(folderPath);
+                            await this.plugin.saveSettings();
+                            this.display(); // Refresh the display
+                        }
+                    }))
+                .settingEl.style.setProperty("border-top", "none");
+        }
 
     }
 }
