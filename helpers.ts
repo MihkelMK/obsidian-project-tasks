@@ -27,6 +27,8 @@ export interface ProjectTasksSettings {
     clearAllTags: boolean;
     nestedTaskBehavior: Nestingbehavior;
     overrideSettings: boolean;
+    autoUpdateOnSave: boolean;
+    watchedFolders: string[];
 }
 
 export const DEFAULT_SETTINGS: ProjectTasksSettings = {
@@ -40,6 +42,8 @@ export const DEFAULT_SETTINGS: ProjectTasksSettings = {
     clearAllTags: false,
     nestedTaskBehavior: Nestingbehavior.ParallelExecution,
     overrideSettings: true,
+    autoUpdateOnSave: false,
+    watchedFolders: []
 }
 
 interface SimpleCursor {
