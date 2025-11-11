@@ -35,6 +35,8 @@ export interface ProjectTasksSettings {
     explicitDependencies: boolean;
     overrideSettings: boolean;
     debug: boolean;
+    autoUpdateOnSave: boolean;
+    watchedFolders: string[];
 }
 
 export const DEFAULT_SETTINGS: ProjectTasksSettings = {
@@ -51,7 +53,9 @@ export const DEFAULT_SETTINGS: ProjectTasksSettings = {
     dependencyDirection: DependencyDirection.TopDown,
     explicitDependencies: true,
     overrideSettings: true,
-    debug: false
+    debug: false,
+    autoUpdateOnSave: false,
+    watchedFolders: []
 }
 
 interface SimpleCursor {
