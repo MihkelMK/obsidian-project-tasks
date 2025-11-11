@@ -175,6 +175,15 @@ By setting the **Clear All Tags** option then *all* tags will be removed from pr
 
 This option is useful if you have changed the list of automatic tags because then you can clear the old automatic tags.
 
+### Automatic Updates on Save
+
+To keep your project task dependencies consistently up-to-date, you can enable automatic updates whenever a file is saved. This removes the need to manually run the `set-ids` command.
+
+- **Auto-update on save**: A toggle to enable or disable this feature. It is disabled by default.
+- **Watched folders**: When auto-update is enabled, you must specify a list of folders to monitor. The plugin will only automatically update tasks in files that are saved within these folders. This gives you granular control over which parts of your vault are affected.
+
+When enabled, saving a file inside a watched folder will automatically apply the task ID and dependency logic, ensuring your project plan is always current.
+
 ### Using Front Matter
 
 All of the options that you can set in the options dialog can also be set at a file level by putting the option values in the front matter of the file and setting the **Override Settings** option. 
